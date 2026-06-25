@@ -55,12 +55,14 @@ export default function Root() {
     }
   }
 
-  function handleLogin() {
-    // Session listener in useEffect will handle the rest
+  async function handleLogin() {
+    const { data: { session } } = await getCurrentSession();
+    if (session?.user) resolveUser(session.user.id);
   }
 
-  function handleRegister() {
-    // Session listener in useEffect will handle the rest
+  async function handleRegister() {
+    const { data: { session } } = await getCurrentSession();
+    if (session?.user) resolveUser(session.user.id);
   }
 
   async function handleLogout() {
@@ -110,5 +112,5 @@ export default function Root() {
     );
   }
 
-  return <ErrorBoundary><App user={user} onLogout={handleLogout} /></ErrorBoundary>;
+  return <ErrorBoundary><App user={user} onLogout={handleLogout} onGoToLogin={() => setView('login')} /></ErrorBoundary>;
 }

@@ -139,6 +139,7 @@ type AppView = 'main' | 'article' | 'profile' | 'author' | 'admin';
 interface AppProps {
   user?: { id: string; name: string; isAdmin?: boolean } | null;
   onLogout?: () => void;
+  onGoToLogin?: () => void;
 }
 
 function formatDate(d: string | null) {
@@ -164,7 +165,7 @@ function toComponentArticle(row: any) {
   };
 }
 
-export default function App({ user, onLogout }: AppProps) {
+export default function App({ user, onLogout, onGoToLogin }: AppProps) {
   const [appView, setAppView] = useState<AppView>('main');
   const [prevView, setPrevView] = useState<AppView>('main');
   const [selectedArticle, setSelectedArticle] = useState<any>(null);
@@ -379,7 +380,7 @@ export default function App({ user, onLogout }: AppProps) {
                   savedCount={savedIds.size}
                 />
               ) : (
-                <button className="p-2 hover:bg-muted rounded-lg transition-colors">
+                <button onClick={onGoToLogin} className="p-2 hover:bg-muted rounded-lg transition-colors">
                   <User className="w-5 h-5 text-foreground" />
                 </button>
               )}
