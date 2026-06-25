@@ -1,0 +1,306 @@
+import { supabase } from './supabase';
+import type { Article, Author, Category, Subcategory, Comment, Profile } from './types';
+
+/* ── Auth ───────────────────────────────────────────────────────── */
+
+export async function signUp(email: string, password: string, displayName: string) {
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: { data: { display_name: displayName } },
+  });
+  if (error) throw error;
+  return data;
+}
+
+export async function signIn(email: string, password: string) {
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) throw error;
+  return data;
+}
+
+export async function signOut() {
+  const { error } = await supabase.auth.signOut();
+  if (error) throw error;
+}
+
+export async function resetPassword(email: string) {
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${window.location.origin}/login`,
+  });
+  if (error) throw error;
+}
+
+export function getCurrentSession() {
+  return supabase.auth.getSession();
+}
+
+export function onAuthChange(callback: (session: any) => void) {
+  const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    callback(session);
+  });
+  return subscription;
+}
+
+/* ── Profiles ────────────────────────────────────────────────────── */
+
+export async function getProfile(userId: string) {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', userId)
+    .single();
+  if (error) throw error;
+  return data as Profile;
+}
+
+export async function updateProfile(userId: string, updates: Partial<Pick<Profile, 'display_name' | 'avatar_url' | 'bio'>>) {
+  const { error } = await supabase
+    .from('profiles')
+    .update(updates)
+    .eq('id', userId);
+  if (error) throw error;
+}
+
+/* ── Categories ──────────────────────────────────────────────────── */
+
+export async function getCategories() {
+  const { data, error } = await supabase
+    .from('categories')
+    .select('*')
+    .order('name');
+  if (error) throw error;
+  return data as Category[];
+}
+
+export async function getSubcategories(categoryId: number) {
+  const { data, error } = await supabase
+    .from('subcategories')
+    .select('*')
+    .eq('category_id', categoryId)
+    .order('name');
+  if (error) throw error;
+  return data as Subcategory[];
+}
+
+export async function getAllSubcategories() {
+  const { data, error } = await supabase
+    .from('subcategories')
+    .select('*, categories!inner(name, slug)')
+    .order('name');
+  if (error) throw error;
+  return data as (Subcategory & { categories: Pick<Category, 'name' | 'slug'> })[];
+}
+
+/* ── Articles ────────────────────────────────────────────────────── */
+
+export async function getArticles(opts?: {
+  categorySlug?: string;
+  subcategorySlug?: string;
+  authorSlug?: string;
+  featured?: boolean;
+  limit?: number;
+  offset?: number;
+}) {
+  let query = supabase
+    .from('articles')
+    .select(`
+      *,
+      categories!inner(name, slug),
+      subcategories(name, slug),
+      authors!inner(name, slug, bio, avatar_url)
+    `)
+    .eq('published', true)
+    .order('published_at', { ascending: false });
+
+  if (opts?.categorySlug) {
+    query = query.eq('categories.slug', opts.categorySlug);
+  }
+  if (opts?.subcategorySlug) {
+    query = query.eq('subcategories.slug', opts.subcategorySlug);
+  }
+  if (opts?.authorSlug) {
+    query = query.eq('authors.slug', opts.authorSlug);
+  }
+  if (opts?.featured) {
+    query = query.eq('featured', true);
+  }
+  if (opts?.limit) {
+    query = query.limit(opts.limit);
+  }
+  if (opts?.offset) {
+    query = query.range(opts.offset, opts.offset + (opts.limit ?? 10) - 1);
+  }
+
+  const { data, error } = await query;
+  if (error) throw error;
+  return data as any[];
+}
+
+export async function getArticleBySlug(slug: string) {
+  const { data, error } = await supabase
+    .from('articles')
+    .select(`
+      *,
+      categories!inner(name, slug),
+      subcategories(name, slug),
+      authors!inner(name, slug, bio, avatar_url)
+    `)
+    .eq('slug', slug)
+    .single();
+  if (error) throw error;
+  return data as any;
+}
+
+export async function getArticleById(id: number) {
+  const { data, error } = await supabase
+    .from('articles')
+    .select(`
+      *,
+      categories!inner(name, slug),
+      subcategories(name, slug),
+      authors!inner(name, slug, bio, avatar_url)
+    `)
+    .eq('id', id)
+    .single();
+  if (error) throw error;
+  return data as any;
+}
+
+/* ── Authors ──────────────────────────────────────────────────────── */
+
+export async function getAuthors() {
+  const { data, error } = await supabase
+    .from('authors')
+    .select('*')
+    .order('name');
+  if (error) throw error;
+  return data as Author[];
+}
+
+export async function getAuthorBySlug(slug: string) {
+  const { data, error } = await supabase
+    .from('authors')
+    .select('*')
+    .eq('slug', slug)
+    .single();
+  if (error) throw error;
+  return data as Author;
+}
+
+export async function getAuthorArticleCount(slug: string) {
+  const { count, error } = await supabase
+    .from('articles')
+    .select('id', { count: 'exact', head: true })
+    .eq('published', true)
+    .eq('authors.slug', slug);
+  if (error) throw error;
+  return count ?? 0;
+}
+
+/* ── Bookmarks ────────────────────────────────────────────────────── */
+
+export async function getBookmarks(userId: string) {
+  const { data, error } = await supabase
+    .from('bookmarks')
+    .select(`
+      article_id,
+      created_at,
+      articles!inner(
+        *,
+        categories(name, slug),
+        authors(name, slug, avatar_url)
+      )
+    `)
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return data as any[];
+}
+
+export async function addBookmark(userId: string, articleId: number) {
+  const { error } = await supabase
+    .from('bookmarks')
+    .insert({ user_id: userId, article_id: articleId });
+  if (error && error.code !== '23505') throw error; // 23505 = already exists
+}
+
+export async function removeBookmark(userId: string, articleId: number) {
+  const { error } = await supabase
+    .from('bookmarks')
+    .delete()
+    .eq('user_id', userId)
+    .eq('article_id', articleId);
+  if (error) throw error;
+}
+
+export async function isBookmarked(userId: string, articleId: number): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('bookmarks')
+    .select('article_id')
+    .eq('user_id', userId)
+    .eq('article_id', articleId)
+    .maybeSingle();
+  if (error) throw error;
+  return data !== null;
+}
+
+/* ── Comments ─────────────────────────────────────────────────────── */
+
+export async function getComments(articleId: number) {
+  const { data, error } = await supabase
+    .from('comments')
+    .select(`
+      *,
+      profiles!inner(display_name, avatar_url)
+    `)
+    .eq('article_id', articleId)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return data as any[];
+}
+
+export async function addComment(articleId: number, userId: string, body: string) {
+  const { data, error } = await supabase
+    .from('comments')
+    .insert({ article_id: articleId, user_id: userId, body })
+    .select(`
+      *,
+      profiles!inner(display_name, avatar_url)
+    `)
+    .single();
+  if (error) throw error;
+  return data as any;
+}
+
+export async function likeComment(commentId: number) {
+  const { error } = await supabase.rpc('increment_comment_likes', { comment_id: commentId });
+  if (error) throw error;
+}
+
+/* ── Newsletter ──────────────────────────────────────────────────── */
+
+export async function subscribeToNewsletter(email: string) {
+  const { error } = await supabase
+    .from('newsletter_subscribers')
+    .insert({ email });
+  if (error && error.code !== '23505') throw error; // 23505 = already subscribed
+}
+
+/* ── Search ───────────────────────────────────────────────────────── */
+
+export async function searchArticles(query: string) {
+  const { data, error } = await supabase
+    .from('articles')
+    .select(`
+      *,
+      categories!inner(name, slug),
+      authors!inner(name, slug, avatar_url)
+    `)
+    .eq('published', true)
+    .textSearch('title', query, { config: 'english' })
+    .order('published_at', { ascending: false })
+    .limit(20);
+  if (error) throw error;
+  return data as any[];
+}
