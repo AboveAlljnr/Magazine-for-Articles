@@ -18,9 +18,10 @@ const PAGE = {
 };
 
 export default function Root() {
-  const [view, setView] = useState<View>('login');
+  const [view, setView] = useState<View>('app');
   const [user, setUser] = useState<{ id: string; name: string; isAdmin: boolean } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [signInPrompt, setSignInPrompt] = useState(true);
 
   useEffect(() => {
     getCurrentSession().then(({ data: { session } }) => {
@@ -39,11 +40,20 @@ export default function Root() {
         resolveUser(session.user.id);
       } else {
         setUser(null);
-        setView('login');
       }
     });
 
     return () => sub.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    const seen = sessionStorage.getItem('signin-prompt-seen');
+    if (seen) { setSignInPrompt(false); return; }
+    const timer = setTimeout(() => {
+      setSignInPrompt(false);
+      sessionStorage.setItem('signin-prompt-seen', '1');
+    }, 6000);
+    return () => clearTimeout(timer);
   }, []);
 
   async function resolveUser(userId: string) {
@@ -117,7 +127,7 @@ export default function Root() {
           />
         </motion.div>
       ) : (
-        <App user={user} onLogout={handleLogout} onGoToLogin={() => setView('login')} />
+        <App user={user} onLogout={handleLogout} onGoToLogin={() => setView('login')} showSignInPrompt={signInPrompt && !user} onDismissSignInPrompt={() => setSignInPrompt(false)} />
       )}
     </ErrorBoundary>
   );

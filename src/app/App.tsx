@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import {
   Menu, Search, BookOpen, User, LogOut, ChevronDown,
   Bookmark, Sun, Moon, LayoutDashboard,
@@ -141,6 +141,8 @@ interface AppProps {
   user?: { id: string; name: string; isAdmin?: boolean } | null;
   onLogout?: () => void;
   onGoToLogin?: () => void;
+  showSignInPrompt?: boolean;
+  onDismissSignInPrompt?: () => void;
 }
 
 function formatDate(d: string | null) {
@@ -166,7 +168,7 @@ function toComponentArticle(row: any) {
   };
 }
 
-export default function App({ user, onLogout, onGoToLogin }: AppProps) {
+export default function App({ user, onLogout, onGoToLogin, showSignInPrompt, onDismissSignInPrompt }: AppProps) {
   const [appView, setAppView] = useState<AppView>('main');
   const [prevView, setPrevView] = useState<AppView>('main');
   const [selectedArticle, setSelectedArticle] = useState<any>(null);
@@ -331,6 +333,36 @@ export default function App({ user, onLogout, onGoToLogin }: AppProps) {
   /* ── Main magazine view ── */
   return (
     <motion.div key="main" {...PAGE_TRANSITION} className="min-h-screen bg-background">
+      <AnimatePresence>
+        {showSignInPrompt && (
+          <motion.div
+            initial={{ opacity: 0, y: 16, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 8, scale: 0.95 }}
+            transition={{ duration: 0.3, ease: 'easeOut' }}
+            className="fixed bottom-6 right-6 z-50 max-w-sm bg-card border border-border rounded-xl shadow-xl p-4 flex items-start gap-3"
+          >
+            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+              <User className="w-4 h-4 text-primary" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm text-foreground font-medium">Sign in to Ubuntu Essence</p>
+              <p className="text-xs text-muted-foreground mt-1">Save articles, bookmark stories, and personalize your reading experience.</p>
+              <div className="flex items-center gap-2 mt-3">
+                <button onClick={onGoToLogin} className="text-xs px-3 py-1.5 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity">
+                  Sign In
+                </button>
+                <button onClick={onDismissSignInPrompt} className="text-xs px-3 py-1.5 text-muted-foreground hover:text-foreground transition-colors">
+                  Maybe later
+                </button>
+              </div>
+            </div>
+            <button onClick={onDismissSignInPrompt} className="shrink-0 text-muted-foreground hover:text-foreground transition-colors p-0.5">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
       {searchOpen && (
         <SearchOverlay articles={mappedArticles} onClose={() => setSearchOpen(false)} onArticleClick={handleArticleClick} />
       )}
