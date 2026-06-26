@@ -26,20 +26,27 @@ export async function signOut() {
 
 export async function resetPassword(email: string) {
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${window.location.origin}/login`,
+    redirectTo: `${window.location.origin}/`,
   });
   if (error) throw error;
 }
 
-export function getCurrentSession() {
-  return supabase.auth.getSession();
+export async function getCurrentSession() {
+  const { data, error } = await supabase.auth.getSession();
+  if (error) throw error;
+  return { data };
 }
 
-export function onAuthChange(callback: (session: any) => void) {
-  const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-    callback(session);
+export function onAuthChange(callback: (event: string, session: any) => void) {
+  const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    callback(event, session);
   });
   return subscription;
+}
+
+export async function updatePassword(password: string) {
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) throw error;
 }
 
 /* ── Profiles ────────────────────────────────────────────────────── */
@@ -55,11 +62,14 @@ export async function getProfile(userId: string) {
 }
 
 export async function updateProfile(userId: string, updates: Partial<Pick<Profile, 'display_name' | 'avatar_url' | 'bio'>>) {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('profiles')
     .update(updates)
-    .eq('id', userId);
+    .eq('id', userId)
+    .select()
+    .single();
   if (error) throw error;
+  return data as Profile;
 }
 
 /* ── Categories ──────────────────────────────────────────────────── */
@@ -189,11 +199,12 @@ export async function getAuthorBySlug(slug: string) {
 }
 
 export async function getAuthorArticleCount(slug: string) {
+  const author = await getAuthorBySlug(slug);
   const { count, error } = await supabase
     .from('articles')
     .select('id', { count: 'exact', head: true })
     .eq('published', true)
-    .eq('authors.slug', slug);
+    .eq('author_id', author.id);
   if (error) throw error;
   return count ?? 0;
 }

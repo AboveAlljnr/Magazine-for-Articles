@@ -7,6 +7,7 @@ interface MobileSidebarProps {
   onCategoryChange: (cat: string) => void;
   onClose: () => void;
   onGoToProfile?: () => void;
+  onGoToReadingList?: () => void;
   onGoToAdmin?: () => void;
   user?: { name: string; isAdmin?: boolean } | null;
   savedCount: number;
@@ -18,6 +19,7 @@ export function MobileSidebar({
   onCategoryChange,
   onClose,
   onGoToProfile,
+  onGoToReadingList,
   onGoToAdmin,
   user,
   savedCount,
@@ -84,7 +86,7 @@ export function MobileSidebar({
             <p className="text-xs uppercase tracking-widest text-muted-foreground px-3">Categories</p>
           </div>
 
-          {categories.slice(1).map((cat) => (
+          {categories.map((cat) => (
             <button
               key={cat}
               onClick={() => handleCategoryClick(cat)}
@@ -115,7 +117,7 @@ export function MobileSidebar({
                 My Profile
               </button>
               <button
-                onClick={() => { onGoToProfile?.(); onClose(); }}
+                onClick={() => { (onGoToReadingList ?? onGoToProfile)?.(); onClose(); }}
                 className="w-full flex items-center gap-3 px-6 py-3 text-sm text-foreground hover:bg-muted/50 transition-colors"
               >
                 <Bookmark className="w-4 h-4 flex-shrink-0" />

@@ -4,10 +4,11 @@ import App from './App';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
+import { UpdatePasswordPage } from './pages/UpdatePasswordPage';
 import { getCurrentSession, onAuthChange, signOut, getProfile } from '../lib/api';
 import { ErrorBoundary } from '../lib/ErrorBoundary';
 
-type View = 'login' | 'register' | 'forgot' | 'app';
+type View = 'login' | 'register' | 'forgot' | 'update-password' | 'app';
 
 const PAGE = {
   initial: { opacity: 0, y: 10 },
@@ -28,10 +29,13 @@ export default function Root() {
       } else {
         setLoading(false);
       }
-    });
+    }).catch(() => setLoading(false));
 
-    const sub = onAuthChange((session) => {
-      if (session?.user) {
+    const sub = onAuthChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY' && session?.user) {
+        setUser({ id: session.user.id, name: session.user.email?.split('@')[0] || 'User', isAdmin: false });
+        setView('update-password');
+      } else if (session?.user) {
         resolveUser(session.user.id);
       } else {
         setUser(null);
@@ -56,13 +60,17 @@ export default function Root() {
   }
 
   async function handleLogin() {
-    const { data: { session } } = await getCurrentSession();
-    if (session?.user) resolveUser(session.user.id);
+    try {
+      const { data: { session } } = await getCurrentSession();
+      if (session?.user) resolveUser(session.user.id);
+    } catch {}
   }
 
   async function handleRegister() {
-    const { data: { session } } = await getCurrentSession();
-    if (session?.user) resolveUser(session.user.id);
+    try {
+      const { data: { session } } = await getCurrentSession();
+      if (session?.user) resolveUser(session.user.id);
+    } catch {}
   }
 
   async function handleLogout() {
@@ -79,38 +87,38 @@ export default function Root() {
     );
   }
 
-  if (view === 'login') {
-    return (
-      <motion.div key="login" {...PAGE}>
-        <LoginPage
-          onLogin={handleLogin}
-          onGoToRegister={() => setView('register')}
-          onGoToForgot={() => setView('forgot')}
-        />
-      </motion.div>
-    );
-  }
-
-  if (view === 'register') {
-    return (
-      <motion.div key="register" {...PAGE}>
-        <RegisterPage
-          onRegister={handleRegister}
-          onGoToLogin={() => setView('login')}
-        />
-      </motion.div>
-    );
-  }
-
-  if (view === 'forgot') {
-    return (
-      <motion.div key="forgot" {...PAGE}>
-        <ForgotPasswordPage
-          onGoToLogin={() => setView('login')}
-        />
-      </motion.div>
-    );
-  }
-
-  return <ErrorBoundary><App user={user} onLogout={handleLogout} onGoToLogin={() => setView('login')} /></ErrorBoundary>;
+  return (
+    <ErrorBoundary>
+      {view === 'login' ? (
+        <motion.div key="login" {...PAGE}>
+          <LoginPage
+            onLogin={handleLogin}
+            onGoToRegister={() => setView('register')}
+            onGoToForgot={() => setView('forgot')}
+          />
+        </motion.div>
+      ) : view === 'register' ? (
+        <motion.div key="register" {...PAGE}>
+          <RegisterPage
+            onRegister={handleRegister}
+            onGoToLogin={() => setView('login')}
+          />
+        </motion.div>
+      ) : view === 'forgot' ? (
+        <motion.div key="forgot" {...PAGE}>
+          <ForgotPasswordPage
+            onGoToLogin={() => setView('login')}
+          />
+        </motion.div>
+      ) : view === 'update-password' ? (
+        <motion.div key="update-password" {...PAGE}>
+          <UpdatePasswordPage
+            onDone={() => { setUser(null); setView('login'); }}
+          />
+        </motion.div>
+      ) : (
+        <App user={user} onLogout={handleLogout} onGoToLogin={() => setView('login')} />
+      )}
+    </ErrorBoundary>
+  );
 }

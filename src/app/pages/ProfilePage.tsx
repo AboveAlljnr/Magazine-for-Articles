@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ArrowLeft, User, BookOpen, Settings, Camera } from 'lucide-react';
-import { updateProfile } from '../../lib/api';
+import { updateProfile, updatePassword } from '../../lib/api';
+import { supabase } from '../../lib/supabase';
 
 const categoryOptions = ['Culture', 'Fashion', 'Heritage', 'Arts', 'Travel', 'Lifestyle'];
 
@@ -10,6 +11,7 @@ interface ProfilePageProps {
   onBack: () => void;
   onArticleClick: (article: any) => void;
   onLogout: () => void;
+  defaultTab?: 'profile' | 'reading-list' | 'preferences';
 }
 
 type Tab = 'profile' | 'reading-list' | 'preferences';
@@ -20,13 +22,18 @@ export function ProfilePage({
   onBack,
   onArticleClick,
   onLogout,
+  defaultTab = 'profile',
 }: ProfilePageProps) {
-  const [activeTab, setActiveTab] = useState<Tab>('profile');
+  const [activeTab, setActiveTab] = useState<Tab>(defaultTab);
   const [name, setName] = useState(user.name);
   const [email, setEmail] = useState(user.email ?? '');
+  const [password, setPassword] = useState('');
   const [saved, setSaved] = useState(false);
+  const [prefsSaved, setPrefsSaved] = useState(false);
   const [selectedCategories, setSelectedCategories] = useState<string[]>(['Culture', 'Heritage']);
   const [newsletter, setNewsletter] = useState(true);
+  const [breakingStories, setBreakingStories] = useState(false);
+  const [authorUpdates, setAuthorUpdates] = useState(true);
 
   function toggleCategory(cat: string) {
     setSelectedCategories((prev) =>
@@ -38,6 +45,13 @@ export function ProfilePage({
     e.preventDefault();
     try {
       await updateProfile(user.id, { display_name: name });
+      if (email && email !== user.email) {
+        await supabase.auth.updateUser({ email });
+      }
+      if (password) {
+        await updatePassword(password);
+        setPassword('');
+      }
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } catch {}
@@ -136,6 +150,8 @@ export function ProfilePage({
               <label className="block text-sm text-foreground mb-1.5">New password</label>
               <input
                 type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 placeholder="Leave blank to keep current"
                 className="w-full px-4 py-3 rounded-lg border border-border bg-input-background focus:outline-none focus:ring-2 focus:ring-primary text-foreground placeholder:text-muted-foreground/60"
               />
@@ -242,8 +258,8 @@ export function ProfilePage({
               <div className="space-y-3">
                 {[
                   { label: 'Weekly digest', desc: 'Top stories curated every Friday', value: newsletter, onChange: setNewsletter },
-                  { label: 'Breaking stories', desc: 'Immediate alerts for major features', value: false, onChange: () => {} },
-                  { label: 'Author updates', desc: 'When authors you follow publish', value: true, onChange: () => {} },
+                  { label: 'Breaking stories', desc: 'Immediate alerts for major features', value: breakingStories, onChange: setBreakingStories },
+                  { label: 'Author updates', desc: 'When authors you follow publish', value: authorUpdates, onChange: setAuthorUpdates },
                 ].map(({ label, desc, value, onChange }) => (
                   <div key={label} className="flex items-start justify-between gap-4 p-4 rounded-xl bg-muted/30 border border-border">
                     <div>
@@ -267,8 +283,8 @@ export function ProfilePage({
               </div>
             </div>
 
-            <button className="px-6 py-2.5 rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition-opacity text-sm">
-              Save preferences
+            <button onClick={() => { setPrefsSaved(true); setTimeout(() => setPrefsSaved(false), 2500); }} className="px-6 py-2.5 rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition-opacity text-sm">
+              {prefsSaved ? 'Saved!' : 'Save preferences'}
             </button>
           </div>
         )}

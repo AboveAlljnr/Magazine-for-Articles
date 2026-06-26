@@ -58,10 +58,10 @@ function UserMenu({ user, onLogout, onGoToProfile, onGoToAdmin, savedCount }: Us
             <p className="text-xs text-muted-foreground">Signed in as</p>
             <p className="text-sm text-foreground truncate font-medium">{user.name}</p>
           </div>
-          <button onClick={() => { setOpen(false); onGoToProfile(); }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-muted/50 transition-colors">
+          <button onClick={() => { setOpen(false); setProfileTab('profile'); onGoToProfile(); }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-muted/50 transition-colors">
             <User className="w-3.5 h-3.5" /> My Profile
           </button>
-          <button onClick={() => { setOpen(false); onGoToProfile(); }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-muted/50 transition-colors">
+          <button onClick={() => { setOpen(false); setProfileTab('reading-list'); onGoToProfile(); }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-muted/50 transition-colors">
             <Bookmark className="w-3.5 h-3.5" /> Reading List
             {savedCount > 0 && <span className="ml-auto bg-primary/10 text-primary text-xs rounded-full px-1.5 py-0.5">{savedCount}</span>}
           </button>
@@ -170,6 +170,7 @@ export default function App({ user, onLogout, onGoToLogin }: AppProps) {
   const [prevView, setPrevView] = useState<AppView>('main');
   const [selectedArticle, setSelectedArticle] = useState<any>(null);
   const [selectedAuthor, setSelectedAuthor] = useState('');
+  const [profileTab, setProfileTab] = useState<'profile' | 'reading-list' | 'preferences'>('profile');
   const [activeCategory, setActiveCategory] = useState('All');
   const [activeSubcategory, setActiveSubcategory] = useState('All');
   const [searchOpen, setSearchOpen] = useState(false);
@@ -204,7 +205,7 @@ export default function App({ user, onLogout, onGoToLogin }: AppProps) {
     const cat = dbCategories.find((c) => c.name === activeCategory);
     getArticles({
       categorySlug: cat?.slug,
-      subcategorySlug: activeSubcategory !== 'All' ? activeSubcategory.toLowerCase().replace(/\s+/g, '-') : undefined,
+      subcategorySlug: activeSubcategory !== 'All' ? Object.values(subcategoryMap).flat().find(s => s.name === activeSubcategory)?.slug : undefined,
     })
       .then((data) => setArticles(data as any[]))
       .catch(() => setArticles([]))
@@ -275,7 +276,7 @@ export default function App({ user, onLogout, onGoToLogin }: AppProps) {
     return (
       <ArticleDetailPage
         article={selectedArticle}
-        onBack={() => setAppView(prevView === 'author' ? 'author' : 'main')}
+        onBack={() => setAppView(prevView)}
         saved={savedIds.has(selectedArticle.id)}
         onToggleSave={() => handleToggleSave(selectedArticle)}
         relatedArticles={related}
@@ -296,6 +297,7 @@ export default function App({ user, onLogout, onGoToLogin }: AppProps) {
           onBack={() => setAppView('main')}
           onArticleClick={handleArticleClick}
           onLogout={onLogout ?? (() => {})}
+          defaultTab={profileTab}
         />
       </motion.div>
     );
@@ -320,7 +322,7 @@ export default function App({ user, onLogout, onGoToLogin }: AppProps) {
   if (appView === 'admin') {
     return (
       <motion.div key="admin" {...PAGE_TRANSITION}>
-        <AdminDashboard onBack={() => setAppView('main')} savedCount={savedIds.size} articles={articles} />
+        <AdminDashboard onBack={() => setAppView('main')} savedCount={savedIds.size} articles={mappedArticles} />
       </motion.div>
     );
   }
@@ -337,7 +339,8 @@ export default function App({ user, onLogout, onGoToLogin }: AppProps) {
           categories={dbCategories.map((c) => c.name)}
           onCategoryChange={handleCategoryChange}
           onClose={() => setMenuOpen(false)}
-          onGoToProfile={() => navigate('profile')}
+          onGoToProfile={() => { setProfileTab('profile'); navigate('profile'); }}
+          onGoToReadingList={() => { setProfileTab('reading-list'); navigate('profile'); }}
           onGoToAdmin={user?.isAdmin ? () => navigate('admin') : undefined}
           user={user}
           savedCount={savedIds.size}
@@ -430,7 +433,7 @@ export default function App({ user, onLogout, onGoToLogin }: AppProps) {
 
           {articles.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {articles.map((article) => (
+              {mappedArticles.map((article) => (
                 <ArticleCard
                   key={article.id}
                   article={article}
