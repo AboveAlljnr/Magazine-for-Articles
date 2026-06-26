@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
-import { X, Calendar, Upload, Trash2, ChevronUp, ChevronDown, Loader2 } from 'lucide-react';
+import { X, Calendar, Upload, Trash2, ChevronUp, ChevronDown, Loader2, Eye } from 'lucide-react';
 import { format } from 'date-fns';
 import { DayPicker } from 'react-day-picker';
 import { createArticle, updateArticle, getCategories, getAllSubcategories, getAuthors, getArticleImages, createArticleImage, updateArticleImage, deleteArticleImage } from '../../lib/api';
 import type { Category, Subcategory, Author, ArticleImage } from '../../lib/types';
 import { RichEditor } from '../components/RichEditor';
 import { ImageUpload } from '../components/ImageUpload';
+import { ArticlePreview } from '../components/ArticlePreview';
 import { supabase } from '../../lib/supabase';
 
 interface ArticleEditorProps {
@@ -31,6 +32,7 @@ export function ArticleEditor({ article, onClose, onSaved }: ArticleEditorProps)
   const [subcategoryId, setSubcategoryId] = useState<number | null>(article?.subcategory_id || null);
   const [authorId, setAuthorId] = useState<number>(article?.author_id || 0);
   const [readTime, setReadTime] = useState(article?.read_time_minutes || 5);
+  const [readTimeManuallySet, setReadTimeManuallySet] = useState(false);
   const [published, setPublished] = useState(article?.published || false);
   const [featured, setFeatured] = useState(article?.featured || false);
   const [publishDate, setPublishDate] = useState<Date | undefined>(article?.published_at ? new Date(article.published_at) : undefined);
@@ -76,6 +78,16 @@ export function ArticleEditor({ article, onClose, onSaved }: ArticleEditorProps)
       getArticleImages(articleId).then(setGalleryImages).catch(() => {}).finally(() => setGalleryLoading(false));
     }
   }, [articleId]);
+
+  // Auto-calculate read time from body paragraphs
+  useEffect(() => {
+    if (readTimeManuallySet) return;
+    const words = bodyParagraphs.join(' ').split(/\s+/).filter(Boolean).length;
+    const estimated = Math.max(1, Math.round(words / 200));
+    setReadTime(estimated);
+  }, [bodyParagraphs, readTimeManuallySet]);
+
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   async function handleSave() {
     if (!title.trim() || !categoryId || !authorId) return;
@@ -209,7 +221,22 @@ export function ArticleEditor({ article, onClose, onSaved }: ArticleEditorProps)
     });
   }
 
+  const previewArticle = {
+    title,
+    excerpt,
+    body: bodyParagraphs,
+    image: imageUrl || 'https://images.unsplash.com/photo-1504711434969-e33886168d6c?w=1200',
+    category: categories.find((c) => c.id === categoryId)?.name || '',
+    subcategory: (subcategories.find((s) => s.id === subcategoryId) || allSubcategories.find((s) => s.id === subcategoryId))?.name || '',
+    author: authors.find((a) => a.id === authorId)?.name || '',
+    authorBio: authors.find((a) => a.id === authorId)?.bio || '',
+    readTime: readTime === 1 ? '1 min read' : `${readTime} min read`,
+    date: publishDate ? format(publishDate, 'MMM d, yyyy') : undefined,
+    galleryImages: galleryImages.map((img) => ({ image_url: img.image_url, caption: img.caption })),
+  };
+
   return (
+    <>
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-foreground/20 backdrop-blur-sm overflow-y-auto py-8">
       <div className="bg-card border border-border rounded-xl w-full max-w-3xl mx-4 shadow-xl">
         <div className="flex items-center justify-between px-6 py-4 border-b border-border">
@@ -329,8 +356,13 @@ export function ArticleEditor({ article, onClose, onSaved }: ArticleEditorProps)
               </select>
             </div>
             <div>
-              <label className="block text-sm text-foreground mb-1.5">Read time (min)</label>
-              <input type="number" min={1} max={60} value={readTime} onChange={(e) => setReadTime(Math.max(1, Number(e.target.value)))} className="w-full px-3 py-2 rounded-lg border border-border bg-input-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+              <label className="block text-sm text-foreground mb-1.5">
+                Read time (min)
+                {!readTimeManuallySet && (
+                  <span className="ml-1.5 text-[10px] uppercase tracking-wider text-muted-foreground bg-muted px-1.5 py-0.5 rounded">auto</span>
+                )}
+              </label>
+              <input type="number" min={1} max={60} value={readTime} onChange={(e) => { setReadTimeManuallySet(true); setReadTime(Math.max(1, Number(e.target.value))); }} className="w-full px-3 py-2 rounded-lg border border-border bg-input-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
             </div>
           </div>
 
@@ -371,11 +403,18 @@ export function ArticleEditor({ article, onClose, onSaved }: ArticleEditorProps)
 
         <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-border">
           <button onClick={onClose} className="px-4 py-2 text-sm rounded-lg border border-border text-muted-foreground hover:text-foreground transition-colors">Cancel</button>
+          <button onClick={() => setPreviewOpen(true)} className="px-4 py-2 text-sm rounded-lg border border-border text-foreground hover:bg-muted transition-colors flex items-center gap-1.5">
+            <Eye className="w-4 h-4" />Preview
+          </button>
           <button onClick={handleSave} disabled={saving || !title.trim() || !categoryId || !authorId} className="px-5 py-2 text-sm rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-40">
             {saving ? 'Saving…' : isEdit ? 'Update Article' : 'Create Article'}
           </button>
         </div>
       </div>
     </div>
+      {previewOpen && (
+        <ArticlePreview article={previewArticle} onClose={() => setPreviewOpen(false)} />
+      )}
+    </>
   );
 }
