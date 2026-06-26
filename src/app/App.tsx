@@ -23,11 +23,12 @@ interface UserMenuProps {
   user: { id: string; name: string; isAdmin?: boolean };
   onLogout: () => void;
   onGoToProfile: () => void;
+  onGoToReadingList: () => void;
   onGoToAdmin: () => void;
   savedCount: number;
 }
 
-function UserMenu({ user, onLogout, onGoToProfile, onGoToAdmin, savedCount }: UserMenuProps) {
+function UserMenu({ user, onLogout, onGoToProfile, onGoToReadingList, onGoToAdmin, savedCount }: UserMenuProps) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -58,10 +59,10 @@ function UserMenu({ user, onLogout, onGoToProfile, onGoToAdmin, savedCount }: Us
             <p className="text-xs text-muted-foreground">Signed in as</p>
             <p className="text-sm text-foreground truncate font-medium">{user.name}</p>
           </div>
-          <button onClick={() => { setOpen(false); setProfileTab('profile'); onGoToProfile(); }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-muted/50 transition-colors">
+          <button onClick={() => { setOpen(false); onGoToProfile(); }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-muted/50 transition-colors">
             <User className="w-3.5 h-3.5" /> My Profile
           </button>
-          <button onClick={() => { setOpen(false); setProfileTab('reading-list'); onGoToProfile(); }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-muted/50 transition-colors">
+          <button onClick={() => { setOpen(false); onGoToReadingList(); }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-muted/50 transition-colors">
             <Bookmark className="w-3.5 h-3.5" /> Reading List
             {savedCount > 0 && <span className="ml-auto bg-primary/10 text-primary text-xs rounded-full px-1.5 py-0.5">{savedCount}</span>}
           </button>
@@ -378,7 +379,8 @@ export default function App({ user, onLogout, onGoToLogin }: AppProps) {
                 <UserMenu
                   user={user}
                   onLogout={onLogout}
-                  onGoToProfile={() => navigate('profile')}
+                  onGoToProfile={() => { setProfileTab('profile'); navigate('profile'); }}
+                  onGoToReadingList={() => { setProfileTab('reading-list'); navigate('profile'); }}
                   onGoToAdmin={() => navigate('admin')}
                   savedCount={savedIds.size}
                 />
