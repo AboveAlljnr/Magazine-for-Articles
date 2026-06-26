@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import type { Article, Author, Category, Subcategory, Comment, Profile } from './types';
+import type { Article, Author, Category, Subcategory, Comment, Profile, NewsletterSubscriber } from './types';
 
 /* ── Auth ───────────────────────────────────────────────────────── */
 
@@ -289,6 +289,27 @@ export async function likeComment(commentId: number) {
   if (error) throw error;
 }
 
+export async function getAllComments() {
+  const { data, error } = await supabase
+    .from('comments')
+    .select(`
+      *,
+      profiles!inner(display_name, avatar_url),
+      articles!inner(title, slug)
+    `)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return data as any[];
+}
+
+export async function adminDeleteComment(id: number) {
+  const { error } = await supabase
+    .from('comments')
+    .delete()
+    .eq('id', id);
+  if (error) throw error;
+}
+
 /* ── Newsletter ──────────────────────────────────────────────────── */
 
 export async function subscribeToNewsletter(email: string) {
@@ -314,4 +335,207 @@ export async function searchArticles(query: string) {
     .limit(20);
   if (error) throw error;
   return data as any[];
+}
+
+/* ── Admin: Articles ─────────────────────────────────────────────── */
+
+export async function getAllArticles() {
+  const { data, error } = await supabase
+    .from('articles')
+    .select(`
+      *,
+      categories!inner(name, slug),
+      subcategories(name, slug),
+      authors!inner(name, slug, bio, avatar_url)
+    `)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return data as any[];
+}
+
+export async function createArticle(article: {
+  title: string;
+  slug: string;
+  excerpt: string;
+  body: string[];
+  category_id: number;
+  subcategory_id?: number | null;
+  author_id: number;
+  image_url?: string;
+  read_time_minutes?: number;
+  published?: boolean;
+  featured?: boolean;
+  published_at?: string | null;
+}) {
+  const { data, error } = await supabase
+    .from('articles')
+    .insert(article)
+    .select()
+    .single();
+  if (error) throw error;
+  return data as any;
+}
+
+export async function updateArticle(
+  id: number,
+  updates: Partial<{
+    title: string;
+    slug: string;
+    excerpt: string;
+    body: string[];
+    category_id: number;
+    subcategory_id: number | null;
+    author_id: number;
+    image_url: string;
+    read_time_minutes: number;
+    published: boolean;
+    featured: boolean;
+    published_at: string | null;
+  }>
+) {
+  const { data, error } = await supabase
+    .from('articles')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .single();
+  if (error) throw error;
+  return data as any;
+}
+
+export async function deleteArticle(id: number) {
+  const { error } = await supabase
+    .from('articles')
+    .delete()
+    .eq('id', id);
+  if (error) throw error;
+}
+
+export async function cloneArticle(id: number) {
+  const original = await getArticleById(id);
+  if (!original) throw new Error('Article not found');
+  const { data, error } = await supabase
+    .from('articles')
+    .insert({
+      title: `${original.title} (copy)`,
+      slug: `${original.slug}-copy-${Date.now()}`,
+      excerpt: original.excerpt,
+      body: original.body,
+      category_id: original.category_id,
+      subcategory_id: original.subcategory_id,
+      author_id: original.author_id,
+      image_url: original.image_url,
+      read_time_minutes: original.read_time_minutes,
+      published: false,
+      featured: false,
+      published_at: null,
+    })
+    .select()
+    .single();
+  if (error) throw error;
+  return data as any;
+}
+
+/* ── Admin: Categories ───────────────────────────────────────────── */
+
+export async function createCategory(data: { name: string; slug: string }) {
+  const { data: result, error } = await supabase
+    .from('categories')
+    .insert(data)
+    .select()
+    .single();
+  if (error) throw error;
+  return result as Category;
+}
+
+export async function updateCategory(id: number, updates: { name?: string }) {
+  const { data, error } = await supabase
+    .from('categories')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .single();
+  if (error) throw error;
+  return data as Category;
+}
+
+export async function deleteCategory(id: number) {
+  const { error } = await supabase
+    .from('categories')
+    .delete()
+    .eq('id', id);
+  if (error) throw error;
+}
+
+/* ── Admin: Subcategories ────────────────────────────────────────── */
+
+export async function createSubcategory(data: { name: string; slug: string; category_id: number }) {
+  const { data: result, error } = await supabase
+    .from('subcategories')
+    .insert(data)
+    .select()
+    .single();
+  if (error) throw error;
+  return result as Subcategory;
+}
+
+export async function updateSubcategory(id: number, updates: { name?: string }) {
+  const { data, error } = await supabase
+    .from('subcategories')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .single();
+  if (error) throw error;
+  return data as Subcategory;
+}
+
+export async function deleteSubcategory(id: number) {
+  const { error } = await supabase
+    .from('subcategories')
+    .delete()
+    .eq('id', id);
+  if (error) throw error;
+}
+
+/* ── Admin: Authors ──────────────────────────────────────────────── */
+
+export async function createAuthor(data: { name: string; slug: string; bio?: string; avatar_url?: string }) {
+  const { data: result, error } = await supabase
+    .from('authors')
+    .insert(data)
+    .select()
+    .single();
+  if (error) throw error;
+  return result as Author;
+}
+
+export async function updateAuthor(id: number, updates: { name?: string; bio?: string; avatar_url?: string }) {
+  const { data, error } = await supabase
+    .from('authors')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .single();
+  if (error) throw error;
+  return data as Author;
+}
+
+export async function deleteAuthor(id: number) {
+  const { error } = await supabase
+    .from('authors')
+    .delete()
+    .eq('id', id);
+  if (error) throw error;
+}
+
+/* ── Admin: Newsletter Subscribers ───────────────────────────────── */
+
+export async function getNewsletterSubscribers() {
+  const { data, error } = await supabase
+    .from('newsletter_subscribers')
+    .select('*')
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return data as NewsletterSubscriber[];
 }

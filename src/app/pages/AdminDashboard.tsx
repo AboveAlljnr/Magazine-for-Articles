@@ -1,15 +1,19 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts';
 import {
   ArrowLeft, LayoutDashboard, FileText, Users, Tag, Mail,
-  Search, ChevronUp, ChevronDown, Star, StarOff, Send, Menu, X,
+  Search, ChevronUp, ChevronDown, Star, StarOff, Send, Menu, X, Trash2, Plus, Pencil, Copy, MessageSquare,
 } from 'lucide-react';
+import { updateArticle, deleteArticle, cloneArticle, getNewsletterSubscribers } from '../../lib/api';
+import type { NewsletterSubscriber } from '../../lib/types';
+import { ArticleEditor } from './ArticleEditor';
+import { AdminCategories } from './AdminCategories';
+import { AdminAuthors } from './AdminAuthors';
+import { AdminComments } from './AdminComments';
 
-
-/* ── Mock data ──────────────────────────────────────────────────── */
 
 const monthlyReaders = [
   { month: 'Jun', readers: 3200 }, { month: 'Jul', readers: 4100 },
@@ -20,46 +24,32 @@ const monthlyReaders = [
   { month: 'Apr', readers: 8700 }, { month: 'May', readers: 11300 },
 ];
 
-const mockSubscribers = [
-  { name: 'Amina Diallo', email: 'amina@example.com', joined: 'Jan 12, 2026', plan: 'Free' },
-  { name: 'Kofi Asante', email: 'kofi@example.com', joined: 'Feb 3, 2026', plan: 'Premium' },
-  { name: 'Ngozi Obi', email: 'ngozi@example.com', joined: 'Feb 18, 2026', plan: 'Free' },
-  { name: 'Tendai Moyo', email: 'tendai@example.com', joined: 'Mar 5, 2026', plan: 'Premium' },
-  { name: 'Fatou Sow', email: 'fatou@example.com', joined: 'Mar 22, 2026', plan: 'Free' },
-  { name: 'Seun Adeyemi', email: 'seun@example.com', joined: 'Apr 1, 2026', plan: 'Premium' },
-  { name: 'Zainab Hassan', email: 'zainab@example.com', joined: 'Apr 14, 2026', plan: 'Free' },
-  { name: 'Ade Mensah', email: 'ade@example.com', joined: 'Apr 30, 2026', plan: 'Premium' },
-  { name: 'Chiamaka Eze', email: 'chiamaka@example.com', joined: 'May 9, 2026', plan: 'Free' },
-  { name: 'Yaw Boateng', email: 'yaw@example.com', joined: 'May 20, 2026', plan: 'Premium' },
-];
-
 const PIE_COLORS = ['#b8652f', '#d4a574', '#8b3a1a', '#e07a3f', '#cc7722', '#a0522d'];
 
-/* ── Helpers ────────────────────────────────────────────────────── */
 
 function getCategoryData(articles: any[]) {
   const counts: Record<string, number> = {};
-  articles.forEach((a: any) => { counts[a.category] = (counts[a.category] ?? 0) + 1; });
+  articles.forEach((a: any) => { counts[a.categories?.name] = (counts[a.categories?.name] ?? 0) + 1; });
   return Object.entries(counts).map(([name, value]) => ({ name, value }));
 }
 
 function getSubcategoryData(articles: any[]) {
   const counts: Record<string, number> = {};
-  articles.forEach((a: any) => { counts[`${a.category} / ${a.subcategory}`] = (counts[`${a.category} / ${a.subcategory}`] ?? 0) + 1; });
+  articles.forEach((a: any) => { counts[`${a.categories?.name} / ${a.subcategories?.name}`] = (counts[`${a.categories?.name} / ${a.subcategories?.name}`] ?? 0) + 1; });
   return Object.entries(counts).map(([name, count]) => ({ name, count }));
 }
 
 function getUniqueAuthors(articles: any[]) {
   const map: Record<string, { bio: string; articles: any[]; categories: string[] }> = {};
   articles.forEach((a: any) => {
-    if (!map[a.author]) map[a.author] = { bio: a.authorBio, articles: [], categories: [] };
-    map[a.author].articles.push(a);
-    if (!map[a.author].categories.includes(a.category)) map[a.author].categories.push(a.category);
+    const authorName = a.authors?.name || 'Unknown';
+    if (!map[authorName]) map[authorName] = { bio: a.authors?.bio || '', articles: [], categories: [] };
+    map[authorName].articles.push(a);
+    if (a.categories?.name && !map[authorName].categories.includes(a.categories.name)) map[authorName].categories.push(a.categories.name);
   });
   return map;
 }
 
-/* ── Sub-components ─────────────────────────────────────────────── */
 
 function StatCard({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
   return (
@@ -71,16 +61,16 @@ function StatCard({ label, value, sub }: { label: string; value: string | number
   );
 }
 
-/* ── Sections ────────────────────────────────────────────────────── */
 
 function Overview({ savedCount, articles }: { savedCount: number; articles: any[] }) {
   const categoryData = getCategoryData(articles);
   const uniqueAuthors = Object.keys(getUniqueAuthors(articles));
+  const publishedCount = articles.filter((a: any) => a.published).length;
 
   return (
     <div className="space-y-8">
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard label="Total Articles" value={articles.length} sub="18 published" />
+        <StatCard label="Total Articles" value={articles.length} sub={`${publishedCount} published`} />
         <StatCard label="Contributors" value={uniqueAuthors.length} sub="unique authors" />
         <StatCard label="Bookmarked" value={savedCount} sub="by readers" />
         <StatCard label="Subscribers" value="1,247" sub="+12% this month" />
@@ -100,10 +90,7 @@ function Overview({ savedCount, articles }: { savedCount: number; articles: any[
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(184,101,47,0.1)" />
               <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#6b5346' }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize: 11, fill: '#6b5346' }} axisLine={false} tickLine={false} />
-              <Tooltip
-                contentStyle={{ background: '#fdfaf6', border: '1px solid rgba(184,101,47,0.2)', borderRadius: 8, fontSize: 12 }}
-                labelStyle={{ color: '#2d1810' }}
-              />
+              <Tooltip contentStyle={{ background: '#fdfaf6', border: '1px solid rgba(184,101,47,0.2)', borderRadius: 8, fontSize: 12 }} labelStyle={{ color: '#2d1810' }} />
               <Area type="monotone" dataKey="readers" stroke="#b8652f" strokeWidth={2} fill="url(#readerGrad)" />
             </AreaChart>
           </ResponsiveContainer>
@@ -116,9 +103,7 @@ function Overview({ savedCount, articles }: { savedCount: number; articles: any[
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(184,101,47,0.1)" />
               <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#6b5346' }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize: 11, fill: '#6b5346' }} axisLine={false} tickLine={false} allowDecimals={false} />
-              <Tooltip
-                contentStyle={{ background: '#fdfaf6', border: '1px solid rgba(184,101,47,0.2)', borderRadius: 8, fontSize: 12 }}
-              />
+              <Tooltip contentStyle={{ background: '#fdfaf6', border: '1px solid rgba(184,101,47,0.2)', borderRadius: 8, fontSize: 12 }} />
               <Bar dataKey="value" fill="#b8652f" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
@@ -128,13 +113,15 @@ function Overview({ savedCount, articles }: { savedCount: number; articles: any[
   );
 }
 
-type SortKey = 'title' | 'category' | 'author' | 'date';
+type SortKey = 'title' | 'category' | 'author' | 'date' | 'published';
 
-function ArticlesTable({ articles }: { articles: any[] }) {
+function ArticlesTable({ articles, onRefresh, onEdit }: { articles: any[]; onRefresh: () => void; onEdit: (article: any) => void }) {
   const [query, setQuery] = useState('');
   const [sortKey, setSortKey] = useState<SortKey>('date');
   const [sortAsc, setSortAsc] = useState(false);
-  const [featured, setFeatured] = useState<Set<number>>(new Set([0]));
+  const [togglingId, setTogglingId] = useState<number | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
+  const [cloningId, setCloningId] = useState<number | null>(null);
 
   function toggleSort(key: SortKey) {
     if (sortKey === key) setSortAsc(!sortAsc);
@@ -144,10 +131,17 @@ function ArticlesTable({ articles }: { articles: any[] }) {
   const filtered = articles
     .filter((a) => {
       const q = query.toLowerCase();
-      return !q || a.title.toLowerCase().includes(q) || a.author.toLowerCase().includes(q) || a.category.toLowerCase().includes(q);
+      const catName = a.categories?.name || '';
+      const authorName = a.authors?.name || '';
+      return !q || a.title.toLowerCase().includes(q) || authorName.toLowerCase().includes(q) || catName.toLowerCase().includes(q);
     })
     .sort((a, b) => {
-      const av = a[sortKey], bv = b[sortKey];
+      let av: string, bv: string;
+      if (sortKey === 'category') { av = a.categories?.name || ''; bv = b.categories?.name || ''; }
+      else if (sortKey === 'author') { av = a.authors?.name || ''; bv = b.authors?.name || ''; }
+      else if (sortKey === 'published') { av = a.published ? '1' : '0'; bv = b.published ? '1' : '0'; }
+      else if (sortKey === 'date') { av = a.published_at || a.created_at || ''; bv = b.published_at || b.created_at || ''; }
+      else { av = a[sortKey] || ''; bv = b[sortKey] || ''; }
       return sortAsc ? av.localeCompare(bv) : bv.localeCompare(av);
     });
 
@@ -156,8 +150,56 @@ function ArticlesTable({ articles }: { articles: any[] }) {
     return sortAsc ? <ChevronUp className="w-3 h-3 text-primary" /> : <ChevronDown className="w-3 h-3 text-primary" />;
   }
 
+  async function handleTogglePublished(article: any) {
+    setTogglingId(article.id);
+    try {
+      await updateArticle(article.id, { published: !article.published, published_at: !article.published ? new Date().toISOString() : article.published_at });
+      onRefresh();
+    } catch (e) { console.error(e); }
+    finally { setTogglingId(null); }
+  }
+
+  async function handleToggleFeatured(article: any) {
+    setTogglingId(article.id);
+    try {
+      await updateArticle(article.id, { featured: !article.featured });
+      onRefresh();
+    } catch (e) { console.error(e); }
+    finally { setTogglingId(null); }
+  }
+
+  async function handleDelete(id: number) {
+    try {
+      await deleteArticle(id);
+      setDeleteConfirm(null);
+      onRefresh();
+    } catch (e) { console.error(e); }
+  }
+
+  async function handleClone(id: number) {
+    setCloningId(id);
+    try {
+      await cloneArticle(id);
+      onRefresh();
+    } catch (e) { console.error(e); }
+    finally { setCloningId(null); }
+  }
+
   return (
     <div className="space-y-4">
+      {deleteConfirm !== null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/20 backdrop-blur-sm">
+          <div className="bg-card border border-border rounded-xl p-6 max-w-sm w-full mx-4 shadow-xl">
+            <h3 className="text-base text-foreground font-medium mb-2">Delete article?</h3>
+            <p className="text-sm text-muted-foreground mb-5">This action cannot be undone.</p>
+            <div className="flex gap-3 justify-end">
+              <button onClick={() => setDeleteConfirm(null)} className="px-4 py-2 text-sm rounded-lg border border-border text-muted-foreground hover:text-foreground transition-colors">Cancel</button>
+              <button onClick={() => handleDelete(deleteConfirm)} className="px-4 py-2 text-sm rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors">Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center gap-3">
         <div className="relative flex-1 max-w-xs">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -177,44 +219,76 @@ function ArticlesTable({ articles }: { articles: any[] }) {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-muted/30">
+                <th className="text-left px-4 py-3 text-xs uppercase tracking-wide text-muted-foreground">Image</th>
                 {(['title', 'category', 'author', 'date'] as SortKey[]).map((k) => (
                   <th key={k} className="text-left px-4 py-3">
-                    <button
-                      onClick={() => toggleSort(k)}
-                      className="flex items-center gap-1 text-xs uppercase tracking-wide text-muted-foreground hover:text-foreground transition-colors"
-                    >
+                    <button onClick={() => toggleSort(k)} className="flex items-center gap-1 text-xs uppercase tracking-wide text-muted-foreground hover:text-foreground transition-colors">
                       {k} <SortIcon k={k} />
                     </button>
                   </th>
                 ))}
-                <th className="text-left px-4 py-3 text-xs uppercase tracking-wide text-muted-foreground">Read time</th>
+                <th className="text-left px-4 py-3">
+                  <button onClick={() => toggleSort('published')} className="flex items-center gap-1 text-xs uppercase tracking-wide text-muted-foreground hover:text-foreground transition-colors">
+                    Status <SortIcon k="published" />
+                  </button>
+                </th>
                 <th className="text-left px-4 py-3 text-xs uppercase tracking-wide text-muted-foreground">Featured</th>
+                <th className="text-left px-4 py-3 text-xs uppercase tracking-wide text-muted-foreground">Actions</th>
               </tr>
             </thead>
             <tbody>
               {filtered.map((article, i) => (
                 <tr key={article.id} className={`border-b border-border last:border-0 hover:bg-muted/20 transition-colors ${i % 2 === 0 ? '' : 'bg-muted/10'}`}>
-                  <td className="px-4 py-3 max-w-[220px]">
+                  <td className="px-4 py-3">
+                    {article.image_url ? (
+                      <img src={article.image_url} alt="" className="w-10 h-10 rounded object-cover border border-border" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                    ) : (
+                      <div className="w-10 h-10 rounded bg-muted flex items-center justify-center text-muted-foreground text-xs">—</div>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 max-w-[200px]">
                     <p className="font-medium text-foreground line-clamp-1">{article.title}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">{article.subcategory}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{article.subcategories?.name || ''}</p>
                   </td>
                   <td className="px-4 py-3">
-                    <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full">{article.category}</span>
+                    <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full">{article.categories?.name || ''}</span>
                   </td>
-                  <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">{article.author}</td>
-                  <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">{article.date}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{article.readTime}</td>
+                  <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">{article.authors?.name || ''}</td>
+                  <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
+                    {article.published_at
+                      ? new Date(article.published_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                      : '-'}
+                  </td>
                   <td className="px-4 py-3">
                     <button
-                      onClick={() => setFeatured((prev) => {
-                        const next = new Set(prev);
-                        next.has(article.id) ? next.delete(article.id) : next.add(article.id);
-                        return next;
-                      })}
-                      className={`transition-colors ${featured.has(article.id) ? 'text-primary' : 'text-muted-foreground hover:text-primary'}`}
+                      onClick={() => handleTogglePublished(article)}
+                      disabled={togglingId === article.id}
+                      className={`text-xs px-2.5 py-1 rounded-full font-medium transition-colors ${
+                        article.published
+                          ? 'bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400'
+                          : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                      }`}
                     >
-                      {featured.has(article.id) ? <Star className="w-4 h-4 fill-current" /> : <StarOff className="w-4 h-4" />}
+                      {togglingId === article.id ? '…' : article.published ? 'Published' : 'Draft'}
                     </button>
+                  </td>
+                  <td className="px-4 py-3">
+                    <button
+                      onClick={() => handleToggleFeatured(article)}
+                      disabled={togglingId === article.id}
+                      className={`transition-colors ${article.featured ? 'text-primary' : 'text-muted-foreground hover:text-primary'}`}
+                    >
+                      {togglingId === article.id ? <span className="text-xs">…</span> : article.featured ? <Star className="w-4 h-4 fill-current" /> : <StarOff className="w-4 h-4" />}
+                    </button>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-1.5">
+                      <button onClick={() => onEdit(article)} className="p-1 text-muted-foreground hover:text-primary transition-colors" title="Edit"><Pencil className="w-3.5 h-3.5" /></button>
+                      <button onClick={() => handleClone(article.id)} disabled={cloningId === article.id} className="p-1 text-muted-foreground hover:text-primary transition-colors" title="Clone">
+                        {cloningId === article.id ? <span className="text-xs">…</span> : <Copy className="w-3.5 h-3.5" />}
+                      </button>
+                      <button onClick={() => setDeleteConfirm(article.id)} className="p-1 text-muted-foreground hover:text-red-500 transition-colors" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -226,85 +300,27 @@ function ArticlesTable({ articles }: { articles: any[] }) {
   );
 }
 
-function AuthorsSection({ onFilterAuthor, articles }: { onFilterAuthor: (name: string) => void; articles: any[] }) {
-  const authorsMap = getUniqueAuthors(articles);
-  return (
-    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-      {Object.entries(authorsMap).map(([name, data]) => (
-        <div key={name} className="bg-card border border-border rounded-xl p-5">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-medium">
-              {name.charAt(0)}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-foreground truncate">{name}</p>
-              <p className="text-xs text-muted-foreground">{data.articles.length} article{data.articles.length !== 1 ? 's' : ''}</p>
-            </div>
-          </div>
-          <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2 mb-4">{data.bio}</p>
-          <div className="flex flex-wrap gap-1 mb-4">
-            {data.categories.map((cat) => (
-              <span key={cat} className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">{cat}</span>
-            ))}
-          </div>
-          <button
-            onClick={() => onFilterAuthor(name)}
-            className="text-xs text-primary hover:underline"
-          >
-            View articles →
-          </button>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function CategoriesSection({ articles }: { articles: any[] }) {
-  const categoryData = getCategoryData(articles);
-  const subcategoryData = getSubcategoryData(articles);
-
-  return (
-    <div className="space-y-8">
-      <div className="grid lg:grid-cols-2 gap-6">
-        <div className="bg-card border border-border rounded-xl p-6">
-          <h3 className="text-base text-foreground mb-6">Distribution by Category</h3>
-          <ResponsiveContainer width="100%" height={260}>
-            <PieChart>
-              <Pie data={categoryData} cx="50%" cy="50%" outerRadius={90} dataKey="value" label={({ name, percent }) => `${name} ${Math.round(percent * 100)}%`} labelLine={false}>
-                {categoryData.map((_, i) => (
-                  <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
-                ))}
-              </Pie>
-              <Tooltip contentStyle={{ background: '#fdfaf6', border: '1px solid rgba(184,101,47,0.2)', borderRadius: 8, fontSize: 12 }} />
-              <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12, color: '#6b5346' }} />
-            </PieChart>
-          </ResponsiveContainer>
-        </div>
-
-        <div className="bg-card border border-border rounded-xl p-6">
-          <h3 className="text-base text-foreground mb-4">Subcategory Breakdown</h3>
-          <div className="space-y-2 max-h-[260px] overflow-y-auto pr-1">
-            {subcategoryData.map(({ name, count }) => (
-              <div key={name} className="flex items-center justify-between py-1.5 border-b border-border last:border-0">
-                <span className="text-sm text-foreground">{name}</span>
-                <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full">{count}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function SubscribersSection() {
+  const [subscribers, setSubscribers] = useState<NewsletterSubscriber[]>([]);
+  const [loading, setLoading] = useState(true);
   const [sent, setSent] = useState(false);
+
+  useEffect(() => {
+    getNewsletterSubscribers()
+      .then(setSubscribers)
+      .catch(() => setSubscribers([]))
+      .finally(() => setLoading(false));
+  }, []);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-base text-foreground">Subscriber list</h3>
-          <p className="text-xs text-muted-foreground mt-0.5">{mockSubscribers.length} subscribers shown · 1,247 total</p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {loading ? 'Loading…' : `${subscribers.length} subscriber${subscribers.length !== 1 ? 's' : ''}`}
+          </p>
         </div>
         <button
           onClick={() => { setSent(true); setTimeout(() => setSent(false), 3000); }}
@@ -319,32 +335,25 @@ function SubscribersSection() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border bg-muted/30">
-              <th className="text-left px-4 py-3 text-xs uppercase tracking-wide text-muted-foreground">Name</th>
               <th className="text-left px-4 py-3 text-xs uppercase tracking-wide text-muted-foreground">Email</th>
-              <th className="text-left px-4 py-3 text-xs uppercase tracking-wide text-muted-foreground">Joined</th>
-              <th className="text-left px-4 py-3 text-xs uppercase tracking-wide text-muted-foreground">Plan</th>
+              <th className="text-left px-4 py-3 text-xs uppercase tracking-wide text-muted-foreground">Subscribed</th>
             </tr>
           </thead>
           <tbody>
-            {mockSubscribers.map((sub, i) => (
-              <tr key={sub.email} className={`border-b border-border last:border-0 hover:bg-muted/20 transition-colors ${i % 2 === 0 ? '' : 'bg-muted/10'}`}>
-                <td className="px-4 py-3">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center text-secondary-foreground text-xs font-medium">
-                      {sub.name.charAt(0)}
-                    </div>
-                    <span className="text-foreground">{sub.name}</span>
-                  </div>
-                </td>
-                <td className="px-4 py-3 text-muted-foreground">{sub.email}</td>
-                <td className="px-4 py-3 text-muted-foreground">{sub.joined}</td>
-                <td className="px-4 py-3">
-                  <span className={`text-xs px-2 py-0.5 rounded-full ${sub.plan === 'Premium' ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}>
-                    {sub.plan}
-                  </span>
-                </td>
-              </tr>
-            ))}
+            {loading ? (
+              <tr><td colSpan={2} className="px-4 py-8 text-center text-sm text-muted-foreground">Loading subscribers…</td></tr>
+            ) : subscribers.length === 0 ? (
+              <tr><td colSpan={2} className="px-4 py-8 text-center text-sm text-muted-foreground">No subscribers yet.</td></tr>
+            ) : (
+              subscribers.map((sub, i) => (
+                <tr key={sub.id} className={`border-b border-border last:border-0 hover:bg-muted/20 transition-colors ${i % 2 === 0 ? '' : 'bg-muted/10'}`}>
+                  <td className="px-4 py-3 text-foreground">{sub.email}</td>
+                  <td className="px-4 py-3 text-muted-foreground">
+                    {new Date(sub.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
@@ -352,14 +361,15 @@ function SubscribersSection() {
   );
 }
 
-/* ── Main Dashboard ─────────────────────────────────────────────── */
 
-type Section = 'overview' | 'articles' | 'authors' | 'categories' | 'subscribers';
+type Section = 'overview' | 'articles' | 'authors' | 'categories' | 'subscribers' | 'comments';
 
 interface AdminDashboardProps {
   onBack: () => void;
   savedCount: number;
   articles: any[];
+  loading?: boolean;
+  onRefresh: () => void;
 }
 
 const navItems: { id: Section; label: string; icon: typeof LayoutDashboard }[] = [
@@ -368,17 +378,23 @@ const navItems: { id: Section; label: string; icon: typeof LayoutDashboard }[] =
   { id: 'authors', label: 'Authors', icon: Users },
   { id: 'categories', label: 'Categories', icon: Tag },
   { id: 'subscribers', label: 'Subscribers', icon: Mail },
+  { id: 'comments', label: 'Comments', icon: MessageSquare },
 ];
 
-export function AdminDashboard({ onBack, savedCount, articles }: AdminDashboardProps) {
+export function AdminDashboard({ onBack, savedCount, articles, loading, onRefresh }: AdminDashboardProps) {
   const [section, setSection] = useState<Section>('overview');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [authorFilter, setAuthorFilter] = useState('');
+  const [editingArticle, setEditingArticle] = useState<any | 'new' | null>(null);
 
   function handleFilterAuthor(name: string) {
     setAuthorFilter(name);
     setSection('articles');
   }
+
+  const filteredArticles = authorFilter
+    ? articles.filter((a: any) => (a.authors?.name || '') === authorFilter)
+    : articles;
 
   const sectionTitles: Record<Section, string> = {
     overview: 'Overview',
@@ -386,41 +402,31 @@ export function AdminDashboard({ onBack, savedCount, articles }: AdminDashboardP
     authors: 'Contributors',
     categories: 'Categories',
     subscribers: 'Subscribers',
+    comments: 'Comments',
   };
 
   return (
     <div className="min-h-screen bg-background flex">
-      {/* Mobile sidebar backdrop */}
       {sidebarOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-foreground/20 backdrop-blur-sm lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
+        <div className="fixed inset-0 z-40 bg-foreground/20 backdrop-blur-sm lg:hidden" onClick={() => setSidebarOpen(false)} />
       )}
 
-      {/* Sidebar */}
       <aside className={`fixed lg:static inset-y-0 left-0 z-50 w-60 bg-card border-r border-border flex flex-col transition-transform duration-200 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
-        {/* Sidebar header */}
         <div className="p-5 border-b border-border flex items-center justify-between">
           <div>
             <p className="text-xs uppercase tracking-widest text-muted-foreground">Ubuntu Essence</p>
             <p className="text-sm font-medium text-foreground mt-0.5">Admin Panel</p>
           </div>
-          <button onClick={() => setSidebarOpen(false)} className="lg:hidden text-muted-foreground hover:text-foreground">
-            <X className="w-4 h-4" />
-          </button>
+          <button onClick={() => setSidebarOpen(false)} className="lg:hidden text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
         </div>
 
-        {/* Nav */}
         <nav className="flex-1 py-4">
           {navItems.map(({ id, label, icon: Icon }) => (
             <button
               key={id}
               onClick={() => { setSection(id); if (id !== 'articles') setAuthorFilter(''); setSidebarOpen(false); }}
               className={`w-full flex items-center gap-3 px-5 py-3 text-sm transition-colors ${
-                section === id
-                  ? 'text-primary bg-primary/5 border-r-2 border-primary'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/40'
+                section === id ? 'text-primary bg-primary/5 border-r-2 border-primary' : 'text-muted-foreground hover:text-foreground hover:bg-muted/40'
               }`}
             >
               <Icon className="w-4 h-4 flex-shrink-0" />
@@ -429,40 +435,54 @@ export function AdminDashboard({ onBack, savedCount, articles }: AdminDashboardP
           ))}
         </nav>
 
-        {/* Back to magazine */}
         <div className="p-4 border-t border-border">
-          <button
-            onClick={onBack}
-            className="w-full flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors px-1"
-          >
+          <button onClick={onBack} className="w-full flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors px-1">
             <ArrowLeft className="w-4 h-4" />
             Back to magazine
           </button>
         </div>
       </aside>
 
-      {/* Main content */}
       <div className="flex-1 min-w-0 flex flex-col">
-        {/* Top bar */}
         <header className="border-b border-border bg-background/95 backdrop-blur-sm sticky top-0 z-30 px-6 h-14 flex items-center gap-4">
-          <button
-            onClick={() => setSidebarOpen(true)}
-            className="lg:hidden p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground"
-          >
+          <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground">
             <Menu className="w-5 h-5" />
           </button>
-          <h1 className="text-base font-medium text-foreground">{sectionTitles[section]}</h1>
+          <h1 className="text-base font-medium text-foreground flex-1">{sectionTitles[section]}</h1>
+          {section === 'articles' && (
+            <button
+              onClick={() => setEditingArticle('new')}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-sm hover:opacity-90 transition-opacity"
+            >
+              <Plus className="w-4 h-4" />
+              New Article
+            </button>
+          )}
         </header>
 
-        {/* Section content */}
         <main className="flex-1 p-6 overflow-y-auto">
-          {section === 'overview' && <Overview savedCount={savedCount} articles={articles} />}
-          {section === 'articles' && <ArticlesTable articles={articles} />}
-          {section === 'authors' && <AuthorsSection onFilterAuthor={handleFilterAuthor} articles={articles} />}
-          {section === 'categories' && <CategoriesSection articles={articles} />}
-          {section === 'subscribers' && <SubscribersSection />}
+          {loading ? (
+            <div className="flex items-center justify-center h-64 text-sm text-muted-foreground">Loading…</div>
+          ) : (
+            <>
+              {section === 'overview' && <Overview savedCount={savedCount} articles={articles} />}
+              {section === 'articles' && <ArticlesTable articles={filteredArticles} onRefresh={onRefresh} onEdit={(a) => setEditingArticle(a)} />}
+              {section === 'authors' && <AdminAuthors />}
+              {section === 'categories' && <AdminCategories />}
+              {section === 'subscribers' && <SubscribersSection />}
+              {section === 'comments' && <AdminComments />}
+            </>
+          )}
         </main>
       </div>
+
+      {editingArticle !== null && (
+        <ArticleEditor
+          article={editingArticle === 'new' ? undefined : editingArticle}
+          onClose={() => setEditingArticle(null)}
+          onSaved={() => { setEditingArticle(null); onRefresh(); }}
+        />
+      )}
     </div>
   );
 }

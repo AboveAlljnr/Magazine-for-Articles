@@ -13,7 +13,7 @@ import { ArticleDetailPage } from './pages/ArticleDetailPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { AuthorPage } from './pages/AuthorPage';
 import { AdminDashboard } from './pages/AdminDashboard';
-import { getArticles, getCategories, getAllSubcategories, getBookmarks, addBookmark, removeBookmark, subscribeToNewsletter } from '../lib/api';
+import { getArticles, getCategories, getAllSubcategories, getBookmarks, addBookmark, removeBookmark, subscribeToNewsletter, getAllArticles, updateArticle, deleteArticle } from '../lib/api';
 
 const PAGE_TRANSITION = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 }, exit: { opacity: 0, y: -8 }, transition: { duration: 0.25, ease: 'easeOut' } };
 
@@ -181,6 +181,8 @@ export default function App({ user, onLogout, onGoToLogin, showSignInPrompt, onD
   const [savedIds, setSavedIds] = useState<Set<number>>(new Set());
   const [darkMode, setDarkMode] = useState(false);
   const [articles, setArticles] = useState<any[]>([]);
+  const [adminArticles, setAdminArticles] = useState<any[]>([]);
+  const [adminLoading, setAdminLoading] = useState(false);
   const [dbCategories, setDbCategories] = useState<{ name: string; slug: string }[]>([]);
   const [subcategoryMap, setSubcategoryMap] = useState<Record<string, { name: string; slug: string }[]>>({});
   const [loading, setLoading] = useState(true);
@@ -222,6 +224,22 @@ export default function App({ user, onLogout, onGoToLogin, showSignInPrompt, onD
       setSavedIds(new Set(data.map((b: any) => b.article_id)));
     }).catch(() => {});
   }, [user]);
+
+  // Fetch all articles for admin view
+  function refreshAdminArticles() {
+    if (!user) return;
+    setAdminLoading(true);
+    getAllArticles()
+      .then((data) => setAdminArticles(data as any[]))
+      .catch(() => setAdminArticles([]))
+      .finally(() => setAdminLoading(false));
+  }
+
+  useEffect(() => {
+    if (appView === 'admin' && user) {
+      refreshAdminArticles();
+    }
+  }, [appView, user]);
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', darkMode);
@@ -325,7 +343,13 @@ export default function App({ user, onLogout, onGoToLogin, showSignInPrompt, onD
   if (appView === 'admin') {
     return (
       <motion.div key="admin" {...PAGE_TRANSITION}>
-        <AdminDashboard onBack={() => setAppView('main')} savedCount={savedIds.size} articles={mappedArticles} />
+        <AdminDashboard
+          onBack={() => setAppView('main')}
+          savedCount={savedIds.size}
+          articles={adminArticles}
+          loading={adminLoading}
+          onRefresh={refreshAdminArticles}
+        />
       </motion.div>
     );
   }
