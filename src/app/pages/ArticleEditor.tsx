@@ -1,11 +1,12 @@
-import { useState, useEffect } from 'react';
-import { X, Calendar } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { X, Calendar, Upload, Trash2, ChevronUp, ChevronDown, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { DayPicker } from 'react-day-picker';
-import { createArticle, updateArticle, getCategories, getAllSubcategories, getAuthors } from '../../lib/api';
-import type { Category, Subcategory, Author } from '../../lib/types';
+import { createArticle, updateArticle, getCategories, getAllSubcategories, getAuthors, getArticleImages, createArticleImage, updateArticleImage, deleteArticleImage } from '../../lib/api';
+import type { Category, Subcategory, Author, ArticleImage } from '../../lib/types';
 import { RichEditor } from '../components/RichEditor';
 import { ImageUpload } from '../components/ImageUpload';
+import { supabase } from '../../lib/supabase';
 
 interface ArticleEditorProps {
   article?: any;
@@ -19,13 +20,12 @@ function slugify(text: string): string {
 
 export function ArticleEditor({ article, onClose, onSaved }: ArticleEditorProps) {
   const isEdit = !!article;
+  const articleId = article?.id;
 
   const [title, setTitle] = useState(article?.title || '');
   const [slug, setSlug] = useState(article?.slug || '');
   const [excerpt, setExcerpt] = useState(article?.excerpt || '');
-  const [bodyParagraphs, setBodyParagraphs] = useState<string[]>(
-    Array.isArray(article?.body) ? article.body : []
-  );
+  const [bodyParagraphs, setBodyParagraphs] = useState<string[]>(Array.isArray(article?.body) ? article.body : []);
   const [imageUrl, setImageUrl] = useState(article?.image_url || '');
   const [categoryId, setCategoryId] = useState<number>(article?.category_id || 0);
   const [subcategoryId, setSubcategoryId] = useState<number | null>(article?.subcategory_id || null);
@@ -33,11 +33,15 @@ export function ArticleEditor({ article, onClose, onSaved }: ArticleEditorProps)
   const [readTime, setReadTime] = useState(article?.read_time_minutes || 5);
   const [published, setPublished] = useState(article?.published || false);
   const [featured, setFeatured] = useState(article?.featured || false);
-  const [publishDate, setPublishDate] = useState<Date | undefined>(
-    article?.published_at ? new Date(article.published_at) : undefined
-  );
+  const [publishDate, setPublishDate] = useState<Date | undefined>(article?.published_at ? new Date(article.published_at) : undefined);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  // Gallery
+  const [galleryImages, setGalleryImages] = useState<ArticleImage[]>([]);
+  const [galleryLoading, setGalleryLoading] = useState(false);
+  const [uploadingGallery, setUploadingGallery] = useState(false);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
@@ -65,6 +69,14 @@ export function ArticleEditor({ article, onClose, onSaved }: ArticleEditorProps)
     }
   }, [categoryId, allSubcategories]);
 
+  // Load gallery images when editing
+  useEffect(() => {
+    if (articleId) {
+      setGalleryLoading(true);
+      getArticleImages(articleId).then(setGalleryImages).catch(() => {}).finally(() => setGalleryLoading(false));
+    }
+  }, [articleId]);
+
   async function handleSave() {
     if (!title.trim() || !categoryId || !authorId) return;
     setSaving(true);
@@ -87,7 +99,19 @@ export function ArticleEditor({ article, onClose, onSaved }: ArticleEditorProps)
       if (isEdit) {
         await updateArticle(article.id, payload);
       } else {
-        await createArticle(payload);
+        const result = await createArticle(payload);
+        // If creating new article, upload gallery images with the new article_id
+        if (galleryImages.length > 0) {
+          for (const img of galleryImages) {
+            await createArticleImage({
+              article_id: result.id,
+              image_url: img.image_url,
+              caption: img.caption,
+              alt_text: img.alt_text,
+              sort_order: img.sort_order,
+            });
+          }
+        }
       }
       onSaved();
     } catch (e) {
@@ -97,154 +121,231 @@ export function ArticleEditor({ article, onClose, onSaved }: ArticleEditorProps)
     }
   }
 
+  // Gallery handlers
+  async function handleUploadGallery(files: FileList | null) {
+    if (!files || files.length === 0) return;
+    setUploadingGallery(true);
+
+    try {
+      for (const file of Array.from(files)) {
+        if (!file.type.startsWith('image/')) continue;
+        if (file.size > 5 * 1024 * 1024) continue;
+
+        const ext = file.name.split('.').pop() || 'png';
+        const path = `articles/gallery/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+
+        const { data, error } = await supabase.storage
+          .from('article-images')
+          .upload(path, file, { contentType: file.type });
+
+        if (error) {
+          console.error('Upload error:', error.message);
+          continue;
+        }
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('article-images')
+          .getPublicUrl(data.path);
+
+        const newImg = {
+          id: -Date.now(), // temporary id
+          article_id: articleId || 0,
+          image_url: publicUrl,
+          caption: '',
+          alt_text: '',
+          sort_order: galleryImages.length + 1,
+          created_at: new Date().toISOString(),
+        };
+
+        setGalleryImages((prev) => [...prev, newImg]);
+
+        // If editing existing article, persist immediately
+        if (articleId) {
+          await createArticleImage({
+            article_id: articleId,
+            image_url: publicUrl,
+            caption: '',
+            alt_text: '',
+            sort_order: galleryImages.length + 1,
+          }).catch(console.error);
+        }
+      }
+    } finally {
+      setUploadingGallery(false);
+    }
+  }
+
+  async function handleDeleteGalleryImage(id: number) {
+    // If it's a persisted image (positive id), delete from DB
+    if (id > 0) {
+      await deleteArticleImage(id).catch(console.error);
+    }
+    setGalleryImages((prev) => prev.filter((img) => img.id !== id));
+  }
+
+  async function handleUpdateGalleryCaption(id: number, caption: string) {
+    setGalleryImages((prev) => prev.map((img) => img.id === id ? { ...img, caption } : img));
+    if (id > 0) {
+      await updateArticleImage(id, { caption }).catch(console.error);
+    }
+  }
+
+  function handleMoveGalleryImage(id: number, direction: 'up' | 'down') {
+    setGalleryImages((prev) => {
+      const idx = prev.findIndex((img) => img.id === id);
+      if (idx === -1) return prev;
+      const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+      if (swapIdx < 0 || swapIdx >= prev.length) return prev;
+
+      const next = [...prev];
+      [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
+      next.forEach((img, i) => {
+        img.sort_order = i + 1;
+        if (img.id > 0) {
+          updateArticleImage(img.id, { sort_order: i + 1 }).catch(console.error);
+        }
+      });
+      return next;
+    });
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-foreground/20 backdrop-blur-sm overflow-y-auto py-8">
       <div className="bg-card border border-border rounded-xl w-full max-w-3xl mx-4 shadow-xl">
         <div className="flex items-center justify-between px-6 py-4 border-b border-border">
-          <h2 className="text-base font-medium text-foreground">
-            {isEdit ? 'Edit Article' : 'New Article'}
-          </h2>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors">
-            <X className="w-5 h-5" />
-          </button>
+          <h2 className="text-base font-medium text-foreground">{isEdit ? 'Edit Article' : 'New Article'}</h2>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors"><X className="w-5 h-5" /></button>
         </div>
 
         <div className="px-6 py-5 space-y-5 max-h-[70vh] overflow-y-auto">
           {/* Title */}
           <div>
             <label className="block text-sm text-foreground mb-1.5">Title</label>
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border border-border bg-input-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-              placeholder="Article title"
-            />
+            <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-border bg-input-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary" placeholder="Article title" />
           </div>
 
           {/* Slug */}
           <div>
             <label className="block text-sm text-foreground mb-1.5">Slug</label>
-            <input
-              type="text"
-              value={slug}
-              onChange={(e) => { setSlug(e.target.value); setSlugTouched(true); }}
-              className="w-full px-3 py-2 rounded-lg border border-border bg-input-background text-sm text-muted-foreground font-mono focus:outline-none focus:ring-2 focus:ring-primary"
-              placeholder="article-slug"
-            />
+            <input type="text" value={slug} onChange={(e) => { setSlug(e.target.value); setSlugTouched(true); }} className="w-full px-3 py-2 rounded-lg border border-border bg-input-background text-sm text-muted-foreground font-mono focus:outline-none focus:ring-2 focus:ring-primary" placeholder="article-slug" />
           </div>
 
           {/* Excerpt */}
           <div>
             <label className="block text-sm text-foreground mb-1.5">Excerpt</label>
-            <textarea
-              value={excerpt}
-              onChange={(e) => setExcerpt(e.target.value)}
-              rows={2}
-              className="w-full px-3 py-2 rounded-lg border border-border bg-input-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary resize-none"
-              placeholder="Brief summary of the article"
-            />
+            <textarea value={excerpt} onChange={(e) => setExcerpt(e.target.value)} rows={2} className="w-full px-3 py-2 rounded-lg border border-border bg-input-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary resize-none" placeholder="Brief summary" />
           </div>
 
-          {/* Body — Rich Text Editor */}
+          {/* Body */}
           <div>
             <label className="block text-sm text-foreground mb-1.5">Body</label>
             <RichEditor value={bodyParagraphs} onChange={setBodyParagraphs} />
           </div>
 
-          {/* Image URL — Upload component */}
+          {/* Cover image */}
           <div>
-            <label className="block text-sm text-foreground mb-1.5">Image</label>
+            <label className="block text-sm text-foreground mb-1.5">Cover Image</label>
             <ImageUpload value={imageUrl} onChange={setImageUrl} />
           </div>
 
-          {/* Category + Author row */}
+          {/* Image Gallery */}
+          <div>
+            <label className="block text-sm text-foreground mb-1.5">Image Gallery</label>
+            <p className="text-xs text-muted-foreground mb-3">Additional images that appear in the article gallery.</p>
+
+            <input
+              ref={galleryInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/gif,image/webp"
+              multiple
+              onChange={(e) => handleUploadGallery(e.target.files)}
+              className="hidden"
+            />
+
+            <button
+              type="button"
+              onClick={() => galleryInputRef.current?.click()}
+              disabled={uploadingGallery}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border bg-card text-sm text-foreground hover:bg-muted transition-colors disabled:opacity-50 mb-4"
+            >
+              {uploadingGallery ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+              {uploadingGallery ? 'Uploading…' : 'Upload Images'}
+            </button>
+
+            {galleryLoading && <p className="text-xs text-muted-foreground">Loading gallery…</p>}
+
+            {galleryImages.length > 0 && (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {galleryImages.map((img, i) => (
+                  <div key={img.id} className="relative group border border-border rounded-lg overflow-hidden bg-card">
+                    <img src={img.image_url} alt={img.caption || ''} className="w-full h-28 object-cover" />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100">
+                      {i > 0 && (
+                        <button onClick={() => handleMoveGalleryImage(img.id, 'up')} className="p-1 rounded bg-white/80 text-foreground hover:bg-white"><ChevronUp className="w-3.5 h-3.5" /></button>
+                      )}
+                      {i < galleryImages.length - 1 && (
+                        <button onClick={() => handleMoveGalleryImage(img.id, 'down')} className="p-1 rounded bg-white/80 text-foreground hover:bg-white"><ChevronDown className="w-3.5 h-3.5" /></button>
+                      )}
+                      <button onClick={() => handleDeleteGalleryImage(img.id)} className="p-1 rounded bg-red-500/80 text-white hover:bg-red-600"><Trash2 className="w-3.5 h-3.5" /></button>
+                    </div>
+                    <input
+                      type="text"
+                      value={img.caption}
+                      onChange={(e) => handleUpdateGalleryCaption(img.id, e.target.value)}
+                      placeholder="Caption…"
+                      className="w-full px-2 py-1.5 text-xs border-t border-border bg-transparent text-foreground focus:outline-none focus:ring-1 focus:ring-primary rounded-none"
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Category + Author */}
           <div className="grid sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm text-foreground mb-1.5">Category</label>
-              <select
-                value={categoryId}
-                onChange={(e) => setCategoryId(Number(e.target.value))}
-                className="w-full px-3 py-2 rounded-lg border border-border bg-input-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-              >
+              <select value={categoryId} onChange={(e) => setCategoryId(Number(e.target.value))} className="w-full px-3 py-2 rounded-lg border border-border bg-input-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary">
                 <option value={0}>Select category</option>
-                {categories.map((c) => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
+                {categories.map((c) => (<option key={c.id} value={c.id}>{c.name}</option>))}
               </select>
             </div>
             <div>
               <label className="block text-sm text-foreground mb-1.5">Author</label>
-              <select
-                value={authorId}
-                onChange={(e) => setAuthorId(Number(e.target.value))}
-                className="w-full px-3 py-2 rounded-lg border border-border bg-input-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-              >
+              <select value={authorId} onChange={(e) => setAuthorId(Number(e.target.value))} className="w-full px-3 py-2 rounded-lg border border-border bg-input-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary">
                 <option value={0}>Select author</option>
-                {authors.map((a) => (
-                  <option key={a.id} value={a.id}>{a.name}</option>
-                ))}
+                {authors.map((a) => (<option key={a.id} value={a.id}>{a.name}</option>))}
               </select>
             </div>
           </div>
 
-          {/* Subcategory + Read time row */}
+          {/* Subcategory + Read time */}
           <div className="grid sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm text-foreground mb-1.5">Subcategory</label>
-              <select
-                value={subcategoryId ?? 0}
-                onChange={(e) => setSubcategoryId(Number(e.target.value) || null)}
-                className="w-full px-3 py-2 rounded-lg border border-border bg-input-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                disabled={!categoryId}
-              >
+              <select value={subcategoryId ?? 0} onChange={(e) => setSubcategoryId(Number(e.target.value) || null)} className="w-full px-3 py-2 rounded-lg border border-border bg-input-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary" disabled={!categoryId}>
                 <option value={0}>None</option>
-                {subcategories.map((s) => (
-                  <option key={s.id} value={s.id}>{s.name}</option>
-                ))}
+                {subcategories.map((s) => (<option key={s.id} value={s.id}>{s.name}</option>))}
               </select>
             </div>
             <div>
               <label className="block text-sm text-foreground mb-1.5">Read time (min)</label>
-              <input
-                type="number"
-                min={1}
-                max={60}
-                value={readTime}
-                onChange={(e) => setReadTime(Math.max(1, Number(e.target.value)))}
-                className="w-full px-3 py-2 rounded-lg border border-border bg-input-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-              />
+              <input type="number" min={1} max={60} value={readTime} onChange={(e) => setReadTime(Math.max(1, Number(e.target.value)))} className="w-full px-3 py-2 rounded-lg border border-border bg-input-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
             </div>
           </div>
 
           {/* Published + Featured + Schedule */}
           <div className="flex items-center gap-6 flex-wrap">
             <label className="flex items-center gap-2.5 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={published}
-                onChange={(e) => setPublished(e.target.checked)}
-                className="w-4 h-4 rounded border-border accent-primary"
-              />
+              <input type="checkbox" checked={published} onChange={(e) => setPublished(e.target.checked)} className="w-4 h-4 rounded border-border accent-primary" />
               <span className="text-sm text-foreground">Published</span>
             </label>
             <label className="flex items-center gap-2.5 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={featured}
-                onChange={(e) => setFeatured(e.target.checked)}
-                className="w-4 h-4 rounded border-border accent-primary"
-              />
+              <input type="checkbox" checked={featured} onChange={(e) => setFeatured(e.target.checked)} className="w-4 h-4 rounded border-border accent-primary" />
               <span className="text-sm text-foreground">Featured</span>
             </label>
-
-            {/* Date picker */}
             <div className="relative">
-              <button
-                type="button"
-                onClick={() => setShowDatePicker(!showDatePicker)}
-                className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-              >
+              <button type="button" onClick={() => setShowDatePicker(!showDatePicker)} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
                 <Calendar className="w-4 h-4" />
                 {publishDate ? format(publishDate, 'MMM d, yyyy') : 'Set date'}
               </button>
@@ -261,11 +362,7 @@ export function ArticleEditor({ article, onClose, onSaved }: ArticleEditorProps)
                     .rdp-day_today { font-weight: 600; }
                     .rdp-button:hover { background: transparent; }
                   `}} />
-                  <DayPicker
-                    mode="single"
-                    selected={publishDate}
-                    onSelect={(d) => { setPublishDate(d); setShowDatePicker(false); }}
-                  />
+                  <DayPicker mode="single" selected={publishDate} onSelect={(d) => { setPublishDate(d); setShowDatePicker(false); }} />
                 </div>
               )}
             </div>
@@ -273,17 +370,8 @@ export function ArticleEditor({ article, onClose, onSaved }: ArticleEditorProps)
         </div>
 
         <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-border">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 text-sm rounded-lg border border-border text-muted-foreground hover:text-foreground transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={saving || !title.trim() || !categoryId || !authorId}
-            className="px-5 py-2 text-sm rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-40"
-          >
+          <button onClick={onClose} className="px-4 py-2 text-sm rounded-lg border border-border text-muted-foreground hover:text-foreground transition-colors">Cancel</button>
+          <button onClick={handleSave} disabled={saving || !title.trim() || !categoryId || !authorId} className="px-5 py-2 text-sm rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-40">
             {saving ? 'Saving…' : isEdit ? 'Update Article' : 'Create Article'}
           </button>
         </div>

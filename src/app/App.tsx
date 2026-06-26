@@ -13,7 +13,8 @@ import { ArticleDetailPage } from './pages/ArticleDetailPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { AuthorPage } from './pages/AuthorPage';
 import { AdminDashboard } from './pages/AdminDashboard';
-import { getArticles, getCategories, getAllSubcategories, getBookmarks, addBookmark, removeBookmark, subscribeToNewsletter, getAllArticles, updateArticle, deleteArticle } from '../lib/api';
+import { GalleryPage } from './pages/GalleryPage';
+import { getArticles, getCategories, getAllSubcategories, getBookmarks, addBookmark, removeBookmark, subscribeToNewsletter, getAllArticles } from '../lib/api';
 
 const PAGE_TRANSITION = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 }, exit: { opacity: 0, y: -8 }, transition: { duration: 0.25, ease: 'easeOut' } };
 
@@ -135,7 +136,7 @@ function NewsletterSection() {
 
 /* ── App ────────────────────────────────────────────────────────── */
 
-type AppView = 'main' | 'article' | 'profile' | 'author' | 'admin';
+type AppView = 'main' | 'article' | 'profile' | 'author' | 'admin' | 'gallery';
 
 interface AppProps {
   user?: { id: string; name: string; isAdmin?: boolean } | null;
@@ -340,6 +341,20 @@ export default function App({ user, onLogout, onGoToLogin, showSignInPrompt, onD
     );
   }
 
+  if (appView === 'gallery') {
+    return (
+      <motion.div key="gallery" {...PAGE_TRANSITION}>
+        <GalleryPage
+          onBack={() => setAppView('main')}
+          onImageClick={(slug) => {
+            const article = mappedArticles.find((a: any) => a.slug === slug);
+            if (article) { setSelectedArticle(article); setAppView('article'); }
+          }}
+        />
+      </motion.div>
+    );
+  }
+
   if (appView === 'admin') {
     return (
       <motion.div key="admin" {...PAGE_TRANSITION}>
@@ -399,6 +414,7 @@ export default function App({ user, onLogout, onGoToLogin, showSignInPrompt, onD
           onGoToProfile={() => { setProfileTab('profile'); navigate('profile'); }}
           onGoToReadingList={() => { setProfileTab('reading-list'); navigate('profile'); }}
           onGoToAdmin={user?.isAdmin ? () => navigate('admin') : undefined}
+          onGoToGallery={() => navigate('gallery')}
           user={user}
           savedCount={savedIds.size}
         />
@@ -425,6 +441,10 @@ export default function App({ user, onLogout, onGoToLogin, showSignInPrompt, onD
                 aria-label="Toggle dark mode"
               >
                 {darkMode ? <Sun className="w-5 h-5 text-foreground" /> : <Moon className="w-5 h-5 text-foreground" />}
+              </button>
+
+              <button className="hidden sm:flex items-center gap-1 px-3 py-1.5 text-sm text-muted-foreground hover:text-primary transition-colors" onClick={() => navigate('gallery')}>
+                Gallery
               </button>
 
               <button className="p-2 hover:bg-muted rounded-lg transition-colors" onClick={() => setSearchOpen(true)}>

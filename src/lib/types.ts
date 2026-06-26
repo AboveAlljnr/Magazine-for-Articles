@@ -41,6 +41,11 @@ export interface Database {
         Insert: Pick<NewsletterSubscriber, 'email'>;
         Update: never;
       };
+      article_images: {
+        Row: ArticleImage;
+        Insert: Omit<ArticleImage, 'id' | 'created_at'>;
+        Update: Partial<Omit<ArticleImage, 'id' | 'created_at'>>;
+      };
     };
     Functions: Record<string, never>;
   };
@@ -115,5 +120,15 @@ export interface Comment {
 export interface NewsletterSubscriber {
   id: number;
   email: string;
+  created_at: string;
+}
+
+export interface ArticleImage {
+  id: number;
+  article_id: number;
+  image_url: string;
+  caption: string;
+  alt_text: string;
+  sort_order: number;
   created_at: string;
 }

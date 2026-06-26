@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import type { Article, Author, Category, Subcategory, Comment, Profile, NewsletterSubscriber } from './types';
+import type { Article, Author, Category, Subcategory, Comment, Profile, NewsletterSubscriber, ArticleImage } from './types';
 
 /* ── Auth ───────────────────────────────────────────────────────── */
 
@@ -538,4 +538,55 @@ export async function getNewsletterSubscribers() {
     .order('created_at', { ascending: false });
   if (error) throw error;
   return data as NewsletterSubscriber[];
+}
+
+/* ── Article Images ──────────────────────────────────────────────── */
+
+export async function getArticleImages(articleId: number) {
+  const { data, error } = await supabase
+    .from('article_images')
+    .select('*')
+    .eq('article_id', articleId)
+    .order('sort_order');
+  if (error) throw error;
+  return data as ArticleImage[];
+}
+
+export async function getAllImagesForGallery() {
+  const { data, error } = await supabase
+    .from('article_images')
+    .select('*, articles!inner(id, title, slug, published)')
+    .eq('articles.published', true)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return data as (ArticleImage & { articles: Pick<Article, 'id' | 'title' | 'slug'> })[];
+}
+
+export async function createArticleImage(image: Omit<ArticleImage, 'id' | 'created_at'>) {
+  const { data, error } = await supabase
+    .from('article_images')
+    .insert(image)
+    .select()
+    .single();
+  if (error) throw error;
+  return data as ArticleImage;
+}
+
+export async function updateArticleImage(id: number, updates: Partial<Pick<ArticleImage, 'caption' | 'alt_text' | 'sort_order'>>) {
+  const { data, error } = await supabase
+    .from('article_images')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .single();
+  if (error) throw error;
+  return data as ArticleImage;
+}
+
+export async function deleteArticleImage(id: number) {
+  const { error } = await supabase
+    .from('article_images')
+    .delete()
+    .eq('id', id);
+  if (error) throw error;
 }
