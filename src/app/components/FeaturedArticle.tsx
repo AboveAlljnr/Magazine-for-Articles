@@ -14,7 +14,7 @@ export function FeaturedArticle({ article, onClick, saved, onToggleSave, onAutho
   return (
     <article className="group cursor-pointer" onClick={() => onClick(article)}>
       <div className="grid lg:grid-cols-2 gap-8 items-center">
-        <div className="aspect-[3/4] lg:aspect-[4/5] overflow-hidden rounded-lg border border-border relative">
+        <div className="aspect-[4/3] sm:aspect-[3/4] lg:aspect-[4/5] overflow-hidden rounded-lg border border-border relative">
           <img
             src={article.image}
             alt={article.title}

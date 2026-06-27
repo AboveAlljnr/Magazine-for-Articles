@@ -306,14 +306,14 @@ export function ArticleEditor({ article, onClose, onSaved }: ArticleEditorProps)
                 {galleryImages.map((img, i) => (
                   <div key={img.id} className="relative group border border-border rounded-lg overflow-hidden bg-card">
                     <img src={img.image_url} alt={img.caption || ''} className="w-full h-28 object-cover" />
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100">
+                    <div className="absolute inset-0 bg-black/0 sm:group-hover:bg-black/30 transition-colors flex items-center justify-center gap-1 opacity-60 sm:opacity-0 sm:group-hover:opacity-100">
                       {i > 0 && (
-                        <button onClick={() => handleMoveGalleryImage(img.id, 'up')} className="p-1 rounded bg-white/80 text-foreground hover:bg-white"><ChevronUp className="w-3.5 h-3.5" /></button>
+                        <button onClick={() => handleMoveGalleryImage(img.id, 'up')} className="p-2 rounded bg-white/80 text-foreground hover:bg-white"><ChevronUp className="w-3.5 h-3.5" /></button>
                       )}
                       {i < galleryImages.length - 1 && (
-                        <button onClick={() => handleMoveGalleryImage(img.id, 'down')} className="p-1 rounded bg-white/80 text-foreground hover:bg-white"><ChevronDown className="w-3.5 h-3.5" /></button>
+                        <button onClick={() => handleMoveGalleryImage(img.id, 'down')} className="p-2 rounded bg-white/80 text-foreground hover:bg-white"><ChevronDown className="w-3.5 h-3.5" /></button>
                       )}
-                      <button onClick={() => handleDeleteGalleryImage(img.id)} className="p-1 rounded bg-red-500/80 text-white hover:bg-red-600"><Trash2 className="w-3.5 h-3.5" /></button>
+                      <button onClick={() => handleDeleteGalleryImage(img.id)} className="p-2 rounded bg-red-500/80 text-white hover:bg-red-600"><Trash2 className="w-3.5 h-3.5" /></button>
                     </div>
                     <input
                       type="text"

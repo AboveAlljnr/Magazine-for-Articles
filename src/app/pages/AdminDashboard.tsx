@@ -214,8 +214,8 @@ function ArticlesTable({ articles, onRefresh, onEdit }: { articles: any[]; onRef
         <span className="text-sm text-muted-foreground">{filtered.length} articles</span>
       </div>
 
-      <div className="bg-card border border-border rounded-xl overflow-hidden">
-        <div className="overflow-x-auto">
+      <div className="bg-card border border-border rounded-xl">
+        <div className="overflow-x-auto rounded-xl">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-muted/30">
@@ -233,7 +233,7 @@ function ArticlesTable({ articles, onRefresh, onEdit }: { articles: any[]; onRef
                   </button>
                 </th>
                 <th className="text-left px-4 py-3 text-xs uppercase tracking-wide text-muted-foreground">Featured</th>
-                <th className="text-left px-4 py-3 text-xs uppercase tracking-wide text-muted-foreground">Actions</th>
+                <th className="text-left px-4 py-3 text-xs uppercase tracking-wide text-muted-foreground sticky right-0 bg-muted/30">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -281,13 +281,13 @@ function ArticlesTable({ articles, onRefresh, onEdit }: { articles: any[]; onRef
                       {togglingId === article.id ? <span className="text-xs">…</span> : article.featured ? <Star className="w-4 h-4 fill-current" /> : <StarOff className="w-4 h-4" />}
                     </button>
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 sticky right-0 bg-card">
                     <div className="flex items-center gap-1.5">
-                      <button onClick={() => onEdit(article)} className="p-1 text-muted-foreground hover:text-primary transition-colors" title="Edit"><Pencil className="w-3.5 h-3.5" /></button>
-                      <button onClick={() => handleClone(article.id)} disabled={cloningId === article.id} className="p-1 text-muted-foreground hover:text-primary transition-colors" title="Clone">
-                        {cloningId === article.id ? <span className="text-xs">…</span> : <Copy className="w-3.5 h-3.5" />}
+                      <button onClick={() => onEdit(article)} className="p-2 text-muted-foreground hover:text-primary transition-colors" title="Edit"><Pencil className="w-4 h-4" /></button>
+                      <button onClick={() => handleClone(article.id)} disabled={cloningId === article.id} className="p-2 text-muted-foreground hover:text-primary transition-colors" title="Clone">
+                        {cloningId === article.id ? <span className="text-xs">…</span> : <Copy className="w-4 h-4" />}
                       </button>
-                      <button onClick={() => setDeleteConfirm(article.id)} className="p-1 text-muted-foreground hover:text-red-500 transition-colors" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
+                      <button onClick={() => setDeleteConfirm(article.id)} className="p-2 text-muted-foreground hover:text-red-500 transition-colors" title="Delete"><Trash2 className="w-4 h-4" /></button>
                     </div>
                   </td>
                 </tr>

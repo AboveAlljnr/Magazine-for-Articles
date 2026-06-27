@@ -37,7 +37,7 @@ export function Lightbox({ images, currentIndex, onClose, onPrev, onNext }: Ligh
         <span className="text-sm text-white/70">
           {currentIndex + 1} / {images.length}
         </span>
-        <button onClick={onClose} className="text-white/70 hover:text-white transition-colors p-1">
+        <button onClick={onClose} className="text-white/70 hover:text-white transition-colors p-3">
           <X className="w-6 h-6" />
         </button>
       </div>
@@ -47,7 +47,7 @@ export function Lightbox({ images, currentIndex, onClose, onPrev, onNext }: Ligh
         {images.length > 1 && (
           <button
             onClick={onPrev}
-            className="absolute left-2 top-1/2 -translate-y-1/2 p-2 text-white/60 hover:text-white transition-colors z-10"
+            className="absolute left-1 sm:left-2 top-1/2 -translate-y-1/2 p-3 sm:p-2 text-white/60 hover:text-white transition-colors z-10"
           >
             <ChevronLeft className="w-8 h-8" />
           </button>
@@ -63,7 +63,7 @@ export function Lightbox({ images, currentIndex, onClose, onPrev, onNext }: Ligh
         {images.length > 1 && (
           <button
             onClick={onNext}
-            className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-white/60 hover:text-white transition-colors z-10"
+            className="absolute right-1 sm:right-2 top-1/2 -translate-y-1/2 p-3 sm:p-2 text-white/60 hover:text-white transition-colors z-10"
           >
             <ChevronRight className="w-8 h-8" />
           </button>

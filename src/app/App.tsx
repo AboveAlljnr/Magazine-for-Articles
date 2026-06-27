@@ -110,7 +110,7 @@ function NewsletterSection() {
         <p className="text-muted-foreground mb-8">
           Subscribe to Ubuntu Essence for weekly stories celebrating African culture, heritage, and the spirit of togetherness.
         </p>
-        <form onSubmit={handleSubscribe} className="flex gap-4 max-w-md mx-auto">
+        <form onSubmit={handleSubscribe} className="flex flex-col sm:flex-row gap-3 sm:gap-4 max-w-md mx-auto">
           <input
             type="email"
             required
@@ -379,7 +379,7 @@ export default function App({ user, onLogout, onGoToLogin, showSignInPrompt, onD
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 8, scale: 0.95 }}
             transition={{ duration: 0.3, ease: 'easeOut' }}
-            className="fixed bottom-6 right-6 z-50 max-w-sm bg-card border border-border rounded-xl shadow-xl p-4 flex items-start gap-3"
+            className="fixed bottom-4 sm:bottom-6 right-4 sm:right-6 z-50 max-w-[calc(100vw-2rem)] sm:max-w-sm bg-card border border-border rounded-xl shadow-xl p-4 flex items-start gap-3"
           >
             <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
               <User className="w-4 h-4 text-primary" />
@@ -443,7 +443,7 @@ export default function App({ user, onLogout, onGoToLogin, showSignInPrompt, onD
                 {darkMode ? <Sun className="w-5 h-5 text-foreground" /> : <Moon className="w-5 h-5 text-foreground" />}
               </button>
 
-              <button className="hidden sm:flex items-center gap-1 px-3 py-1.5 text-sm text-muted-foreground hover:text-primary transition-colors" onClick={() => navigate('gallery')}>
+              <button className="flex items-center gap-1 px-3 py-1.5 text-sm text-muted-foreground hover:text-primary transition-colors" onClick={() => navigate('gallery')}>
                 Gallery
               </button>
 

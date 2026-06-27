@@ -119,7 +119,7 @@ export function CommentsSection({ articleId, userName = 'Reader', userId }: Comm
                 <p className="text-sm text-foreground/85 leading-relaxed">{comment.body}</p>
                 <button
                   onClick={() => toggleLike(comment.id)}
-                  className={`flex items-center gap-1.5 mt-2 text-xs transition-colors ${
+                  className={`flex items-center gap-1.5 mt-2 text-xs transition-colors p-2 -ml-2 ${
                     likedIds.has(comment.id) ? 'text-primary' : 'text-muted-foreground hover:text-primary'
                   }`}
                 >

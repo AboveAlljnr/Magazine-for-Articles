@@ -24,7 +24,7 @@ export function ArticleCard({ article, onClick, saved, onToggleSave, onAuthorCli
           className={`absolute top-3 right-3 w-8 h-8 rounded-full flex items-center justify-center transition-all ${
             saved
               ? 'bg-primary text-primary-foreground'
-              : 'bg-background/80 backdrop-blur-sm text-muted-foreground hover:bg-background hover:text-primary opacity-0 group-hover:opacity-100'
+              : 'bg-background/80 backdrop-blur-sm text-foreground hover:bg-background hover:text-primary opacity-60 hover:opacity-100 sm:opacity-0 sm:group-hover:opacity-100'
           }`}
         >
           {saved ? <BookmarkCheck className="w-4 h-4" /> : <Bookmark className="w-4 h-4" />}

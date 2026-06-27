@@ -34,7 +34,7 @@ export function GalleryPage({ onBack, onImageClick }: GalleryPageProps) {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="sticky top-0 z-30 bg-background/95 backdrop-blur-sm border-b border-border">
-        <div className="max-w-7xl mx-auto px-6 h-14 flex items-center gap-4">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center gap-4">
           <button
             onClick={onBack}
             className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors"
@@ -48,7 +48,7 @@ export function GalleryPage({ onBack, onImageClick }: GalleryPageProps) {
       </header>
 
       {/* Grid */}
-      <main className="max-w-7xl mx-auto px-6 py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
         {loading ? (
           <div className="flex items-center justify-center h-64 text-sm text-muted-foreground">Loading…</div>
         ) : images.length === 0 ? (
