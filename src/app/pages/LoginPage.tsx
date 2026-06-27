@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Eye, EyeOff, BookOpen } from 'lucide-react';
 import { signIn } from '../../lib/api';
+import { supabase } from '../../lib/supabase';
 
 interface LoginPageProps {
   onLogin: () => void;
@@ -162,7 +163,7 @@ export function LoginPage({ onLogin, onGoToRegister, onGoToForgot }: LoginPagePr
 
           {/* Social options */}
           <div className="space-y-3">
-            <button className="w-full py-3 rounded-lg border border-border bg-background hover:bg-muted/40 transition-colors flex items-center justify-center gap-3 text-sm text-foreground">
+            <button onClick={() => supabase.auth.signInWithOAuth({ provider: 'google' })} className="w-full py-3 rounded-lg border border-border bg-background hover:bg-muted/40 transition-colors flex items-center justify-center gap-3 text-sm text-foreground">
               <GoogleIcon />
               Continue with Google
             </button>
