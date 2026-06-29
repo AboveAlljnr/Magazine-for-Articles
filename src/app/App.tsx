@@ -450,7 +450,7 @@ export default function App({ user, onLogout, onGoToLogin, showSignInPrompt, onD
 
             <div className="flex items-center gap-2">
               <BookOpen className="w-8 h-8 text-primary" />
-              <h1 className="text-2xl tracking-tight text-primary">UBUNTU ESSENCE</h1>
+              <h1 className="text-xl sm:text-2xl tracking-tight text-primary">UBUNTU ESSENCE</h1>
             </div>
 
             <div className="flex items-center gap-1">
