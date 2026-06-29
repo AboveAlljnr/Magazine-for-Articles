@@ -448,9 +448,9 @@ export default function App({ user, onLogout, onGoToLogin, showSignInPrompt, onD
               <Menu className="w-6 h-6 text-foreground" />
             </button>
 
-            <div className="flex items-center gap-2">
-              <BookOpen className="w-8 h-8 text-primary" />
-              <h1 className="text-xl sm:text-2xl tracking-tight text-primary">UBUNTU ESSENCE</h1>
+            <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+              <BookOpen className="w-6 h-6 sm:w-8 sm:h-8 text-primary" />
+              <h1 className="text-sm sm:text-lg xl:text-xl tracking-tight text-primary">UBUNTU ESSENCE</h1>
             </div>
 
             <div className="flex items-center gap-1">
@@ -464,7 +464,8 @@ export default function App({ user, onLogout, onGoToLogin, showSignInPrompt, onD
               </button>
 
               <button className="flex items-center gap-1 px-3 py-1.5 text-sm text-muted-foreground hover:text-primary transition-colors" onClick={() => navigate('gallery')}>
-                Gallery
+                <span className="hidden sm:inline">Gallery</span>
+                <svg className="w-5 h-5 sm:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
               </button>
 
               <button className="p-2 hover:bg-muted rounded-lg transition-colors" onClick={() => setSearchOpen(true)}>
