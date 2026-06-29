@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft, Clock, Bookmark, BookmarkCheck, Share2, Twitter, Facebook, Link } from 'lucide-react';
+import { ArrowLeft, Clock, Bookmark, BookmarkCheck, Share2, Facebook, Link } from 'lucide-react';
 import { motion } from 'motion/react';
 import { CommentsSection } from '../components/CommentsSection';
 
@@ -122,7 +122,7 @@ export function ArticleDetailPage({
               {shareOpen && (
                 <div className="absolute right-0 top-full mt-2 w-40 bg-card border border-border rounded-xl shadow-lg py-1 z-50">
                   <button className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-muted/50 transition-colors">
-                    <Twitter className="w-3.5 h-3.5 text-sky-500" /> Twitter
+                    <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg> X
                   </button>
                   <button className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-muted/50 transition-colors">
                     <Facebook className="w-3.5 h-3.5 text-blue-600" /> Facebook

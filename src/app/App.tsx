@@ -14,6 +14,9 @@ import { ProfilePage } from './pages/ProfilePage';
 import { AuthorPage } from './pages/AuthorPage';
 import { AdminDashboard } from './pages/AdminDashboard';
 import { GalleryPage } from './pages/GalleryPage';
+import { StaticPage } from './components/StaticPage';
+import { privacyPage, termsPage, cookiesPage, aboutPage, contactPage } from './lib/legal-content';
+import type { StaticSection } from './lib/legal-content';
 import { getArticles, getCategories, getAllSubcategories, getBookmarks, addBookmark, removeBookmark, subscribeToNewsletter, getAllArticles } from '../lib/api';
 
 const PAGE_TRANSITION = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 }, exit: { opacity: 0, y: -8 }, transition: { duration: 0.25, ease: 'easeOut' } };
@@ -136,7 +139,7 @@ function NewsletterSection() {
 
 /* ── App ────────────────────────────────────────────────────────── */
 
-type AppView = 'main' | 'article' | 'profile' | 'author' | 'admin' | 'gallery';
+type AppView = 'main' | 'article' | 'profile' | 'author' | 'admin' | 'gallery' | 'privacy' | 'terms' | 'cookies' | 'about' | 'contact';
 
 interface AppProps {
   user?: { id: string; name: string; isAdmin?: boolean } | null;
@@ -369,6 +372,23 @@ export default function App({ user, onLogout, onGoToLogin, showSignInPrompt, onD
     );
   }
 
+  const staticPages: Record<string, { title: string; sections: StaticSection[] }> = {
+    privacy: privacyPage,
+    terms: termsPage,
+    cookies: cookiesPage,
+    about: aboutPage,
+    contact: contactPage,
+  };
+
+  if (appView in staticPages) {
+    const page = staticPages[appView];
+    return (
+      <motion.div key={appView} {...PAGE_TRANSITION}>
+        <StaticPage title={page.title} sections={page.sections} onBack={() => setAppView('main')} />
+      </motion.div>
+    );
+  }
+
   /* ── Main magazine view ── */
   return (
     <motion.div key="main" {...PAGE_TRANSITION} className="min-h-screen bg-background">
@@ -471,6 +491,7 @@ export default function App({ user, onLogout, onGoToLogin, showSignInPrompt, onD
       </header>
 
       {/* Category Navigation */}
+      <div className="hidden sm:block">
       <CategoryNav
         categories={['All', ...dbCategories.map((c) => c.name)]}
         activeCategory={activeCategory}
@@ -479,6 +500,7 @@ export default function App({ user, onLogout, onGoToLogin, showSignInPrompt, onD
         activeSubcategory={activeSubcategory}
         onSubcategoryChange={setActiveSubcategory}
       />
+      </div>
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -541,33 +563,25 @@ export default function App({ user, onLogout, onGoToLogin, showSignInPrompt, onD
             <div>
               <h4 className="mb-4 text-foreground">About</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><a href="#" className="hover:text-primary transition-colors">Our Story</a></li>
-                <li><a href="#" className="hover:text-primary transition-colors">Team</a></li>
-                <li><a href="#" className="hover:text-primary transition-colors">Mission</a></li>
+                <li><button onClick={() => navigate('about')} className="hover:text-primary transition-colors">Our Story</button></li>
+                <li><button onClick={() => navigate('about')} className="hover:text-primary transition-colors">Mission</button></li>
+                <li><button onClick={() => navigate('contact')} className="hover:text-primary transition-colors">Contact</button></li>
               </ul>
             </div>
             <div>
               <h4 className="mb-4 text-foreground">Connect</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li><a href="#" className="hover:text-primary transition-colors">Instagram</a></li>
-                <li><a href="#" className="hover:text-primary transition-colors">Twitter</a></li>
+                <li><a href="#" className="hover:text-primary transition-colors">X</a></li>
                 <li><a href="#" className="hover:text-primary transition-colors">LinkedIn</a></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="mb-4 text-foreground">Explore</h4>
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><a href="#" className="hover:text-primary transition-colors">Archives</a></li>
-                <li><a href="#" className="hover:text-primary transition-colors">Topics</a></li>
-                <li><a href="#" className="hover:text-primary transition-colors">Authors</a></li>
               </ul>
             </div>
             <div>
               <h4 className="mb-4 text-foreground">Legal</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><a href="#" className="hover:text-primary transition-colors">Privacy</a></li>
-                <li><a href="#" className="hover:text-primary transition-colors">Terms</a></li>
-                <li><a href="#" className="hover:text-primary transition-colors">Contact</a></li>
+                <li><button onClick={() => navigate('privacy')} className="hover:text-primary transition-colors">Privacy</button></li>
+                <li><button onClick={() => navigate('terms')} className="hover:text-primary transition-colors">Terms</button></li>
+                <li><button onClick={() => navigate('cookies')} className="hover:text-primary transition-colors">Cookies</button></li>
               </ul>
             </div>
           </div>
