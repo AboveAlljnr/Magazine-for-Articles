@@ -1,12 +1,12 @@
 import { Clock, Bookmark, BookmarkCheck } from 'lucide-react';
-
-interface Article { id: number; title: string; excerpt: string; image: string; category: string; subcategory: string; author: string; authorBio: string; date: string; readTime: string; }
+import type { MappedArticle } from '../lib/article-types';
+import { Avatar } from './Avatar';
 
 interface ArticleCardProps {
-  article: Article;
-  onClick: (article: Article) => void;
+  article: MappedArticle;
+  onClick: (article: MappedArticle) => void;
   saved: boolean;
-  onToggleSave: (article: Article) => void;
+  onToggleSave: (article: MappedArticle) => void;
   onAuthorClick: (name: string) => void;
 }
 
@@ -20,7 +20,7 @@ export function ArticleCard({ article, onClick, saved, onToggleSave, onAuthorCli
           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
         />
         <button
-          onClick={(e) => { e.stopPropagation(); onToggleSave(article); }}
+          onClick={e => { e.stopPropagation(); onToggleSave(article); }}
           className={`absolute top-3 right-3 w-8 h-8 rounded-full flex items-center justify-center transition-all ${
             saved
               ? 'bg-primary text-primary-foreground'
@@ -43,22 +43,22 @@ export function ArticleCard({ article, onClick, saved, onToggleSave, onAuthorCli
           </span>
         </div>
 
-        <h3 className="text-xl text-foreground group-hover:text-primary transition-colors">
+        <h3 className="text-xl text-foreground group-hover:text-primary transition-colors leading-snug">
           {article.title}
         </h3>
 
         <p className="text-sm text-muted-foreground line-clamp-2">{article.excerpt}</p>
 
         <div className="flex items-center gap-3 pt-2">
-          <button
-            onClick={(e) => { e.stopPropagation(); onAuthorClick(article.author); }}
-            className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center text-xs text-primary font-medium flex-shrink-0 hover:bg-primary hover:text-primary-foreground transition-colors"
-          >
-            {article.author.charAt(0)}
-          </button>
+          <Avatar
+            name={article.author}
+            src={article.authorAvatar}
+            size="xs"
+            onClick={e => { (e as any).stopPropagation?.(); onAuthorClick(article.author); }}
+          />
           <div>
             <button
-              onClick={(e) => { e.stopPropagation(); onAuthorClick(article.author); }}
+              onClick={e => { e.stopPropagation(); onAuthorClick(article.author); }}
               className="text-sm text-foreground hover:text-primary transition-colors block text-left"
             >
               {article.author}

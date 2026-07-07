@@ -1,12 +1,12 @@
 import { Clock, Bookmark, BookmarkCheck } from 'lucide-react';
-
-interface Article { id: number; title: string; excerpt: string; image: string; category: string; subcategory: string; author: string; authorBio: string; date: string; readTime: string; }
+import type { MappedArticle } from '../lib/article-types';
+import { Avatar } from './Avatar';
 
 interface FeaturedArticleProps {
-  article: Article;
-  onClick: (article: Article) => void;
+  article: MappedArticle;
+  onClick: (article: MappedArticle) => void;
   saved: boolean;
-  onToggleSave: (article: Article) => void;
+  onToggleSave: (article: MappedArticle) => void;
   onAuthorClick: (name: string) => void;
 }
 
@@ -26,7 +26,7 @@ export function FeaturedArticle({ article, onClick, saved, onToggleSave, onAutho
             </span>
           </div>
           <button
-            onClick={(e) => { e.stopPropagation(); onToggleSave(article); }}
+            onClick={e => { e.stopPropagation(); onToggleSave(article); }}
             className={`absolute top-3 right-3 w-9 h-9 rounded-full flex items-center justify-center transition-all shadow-lg ${
               saved
                 ? 'bg-primary text-primary-foreground'
@@ -56,15 +56,15 @@ export function FeaturedArticle({ article, onClick, saved, onToggleSave, onAutho
           <p className="text-lg text-muted-foreground leading-relaxed">{article.excerpt}</p>
 
           <div className="flex items-center gap-4 pt-4">
-            <button
-              onClick={(e) => { e.stopPropagation(); onAuthorClick(article.author); }}
-              className="w-12 h-12 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-lg font-medium hover:opacity-80 transition-opacity"
-            >
-              {article.author.charAt(0)}
-            </button>
+            <Avatar
+              name={article.author}
+              src={article.authorAvatar}
+              size="lg"
+              onClick={e => { (e as any).stopPropagation?.(); onAuthorClick(article.author); }}
+            />
             <div>
               <button
-                onClick={(e) => { e.stopPropagation(); onAuthorClick(article.author); }}
+                onClick={e => { e.stopPropagation(); onAuthorClick(article.author); }}
                 className="text-sm text-foreground hover:text-primary transition-colors block text-left"
               >
                 {article.author}
@@ -74,7 +74,7 @@ export function FeaturedArticle({ article, onClick, saved, onToggleSave, onAutho
           </div>
 
           <button
-            onClick={(e) => { e.stopPropagation(); onClick(article); }}
+            onClick={e => { e.stopPropagation(); onClick(article); }}
             className="px-8 py-3 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity"
           >
             Read Article

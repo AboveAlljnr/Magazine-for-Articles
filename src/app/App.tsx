@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
+import { Routes, Route, useNavigate, useParams, useLocation, Navigate } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Menu, Search, BookOpen, User, LogOut, ChevronDown,
-  Bookmark, Sun, Moon, LayoutDashboard,
+  Bookmark, Sun, Moon, LayoutDashboard, BookMarked,
 } from 'lucide-react';
 import { ArticleCard } from './components/ArticleCard';
 import { FeaturedArticle } from './components/FeaturedArticle';
@@ -16,12 +17,167 @@ import { AdminDashboard } from './pages/AdminDashboard';
 import { GalleryPage } from './pages/GalleryPage';
 import { StaticPage } from './components/StaticPage';
 import { privacyPage, termsPage, cookiesPage, aboutPage, contactPage } from './lib/legal-content';
-import type { StaticSection } from './lib/legal-content';
-import { getArticles, getCategories, getAllSubcategories, getBookmarks, addBookmark, removeBookmark, subscribeToNewsletter, getAllArticles } from '../lib/api';
+import type { MappedArticle } from './lib/article-types';
+import {
+  getArticles, getCategories, getAllSubcategories, getBookmarks,
+  addBookmark, removeBookmark, subscribeToNewsletter, getAllArticles, getArticleBySlug,
+} from '../lib/api';
 
-const PAGE_TRANSITION = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 }, exit: { opacity: 0, y: -8 }, transition: { duration: 0.25, ease: 'easeOut' } };
+const PT = {
+  initial: { opacity: 0, y: 12 },
+  animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: -8 },
+  transition: { duration: 0.25, ease: 'easeOut' },
+};
 
-/* ── User menu ──────────────────────────────────────────────────── */
+/* ── Helpers ────────────────────────────────────────────────────── */
+
+function formatDate(d: string | null) {
+  if (!d) return '';
+  return new Date(d).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+}
+
+export function toComponentArticle(row: any): MappedArticle {
+  return {
+    id: row.id,
+    title: row.title,
+    slug: row.slug,
+    excerpt: row.excerpt,
+    body: row.body || [],
+    image: row.image_url,
+    category: row.categories?.name || '',
+    subcategory: row.subcategories?.name || '',
+    author: row.authors?.name || '',
+    authorBio: row.authors?.bio || '',
+    authorAvatar: row.authors?.avatar_url || null,
+    date: formatDate(row.published_at),
+    readTime: `${row.read_time_minutes} min read`,
+    featured: row.featured,
+  };
+}
+
+/* ── Route wrapper: Article Detail ─────────────────────────────── */
+
+interface ArticleWrapperProps {
+  mappedArticles: MappedArticle[];
+  savedIds: Set<number>;
+  onToggleSave: (a: MappedArticle) => Promise<void>;
+  onAuthorClick: (name: string) => void;
+  onArticleClick: (a: MappedArticle) => void;
+  user?: { id: string; name: string } | null;
+}
+
+function ArticlePageWrapper({
+  mappedArticles, savedIds, onToggleSave, onAuthorClick, onArticleClick, user,
+}: ArticleWrapperProps) {
+  const { slug } = useParams<{ slug: string }>();
+  const navigate = useNavigate();
+  const [article, setArticle] = useState<MappedArticle | null>(null);
+  const [fetching, setFetching] = useState(true);
+
+  useEffect(() => {
+    if (!slug) { navigate('/'); return; }
+    const found = mappedArticles.find(a => a.slug === slug);
+    if (found) {
+      setArticle(found);
+      setFetching(false);
+    } else {
+      setFetching(true);
+      getArticleBySlug(slug)
+        .then(data => setArticle(toComponentArticle(data)))
+        .catch(() => navigate('/'))
+        .finally(() => setFetching(false));
+    }
+  }, [slug]);
+
+  if (fetching) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+  if (!article) return null;
+
+  const related = mappedArticles
+    .filter(a => a.id !== article.id && a.category === article.category)
+    .slice(0, 3);
+
+  return (
+    <ArticleDetailPage
+      article={article}
+      onBack={() => navigate('/')}
+      saved={savedIds.has(article.id)}
+      onToggleSave={() => onToggleSave(article)}
+      relatedArticles={related}
+      onArticleClick={onArticleClick}
+      onAuthorClick={onAuthorClick}
+      userName={user?.name}
+      userId={user?.id}
+    />
+  );
+}
+
+/* ── Route wrapper: Author Page ─────────────────────────────────── */
+
+interface AuthorWrapperProps {
+  mappedArticles: MappedArticle[];
+  savedIds: Set<number>;
+  onToggleSave: (a: MappedArticle) => Promise<void>;
+  onArticleClick: (a: MappedArticle) => void;
+}
+
+function AuthorPageWrapper({ mappedArticles, savedIds, onToggleSave, onArticleClick }: AuthorWrapperProps) {
+  const { authorName } = useParams<{ authorName: string }>();
+  const navigate = useNavigate();
+  const name = authorName ? decodeURIComponent(authorName) : '';
+
+  return (
+    <motion.div key={name} {...PT}>
+      <AuthorPage
+        authorName={name}
+        onBack={() => navigate('/')}
+        onArticleClick={onArticleClick}
+        savedIds={savedIds}
+        onToggleSave={onToggleSave}
+        onAuthorClick={n => navigate(`/authors/${encodeURIComponent(n)}`)}
+        allArticles={mappedArticles}
+      />
+    </motion.div>
+  );
+}
+
+/* ── Route wrapper: Admin Dashboard ────────────────────────────── */
+
+function AdminPageWrapper({ savedCount }: { savedCount: number }) {
+  const navigate = useNavigate();
+  const [adminArticles, setAdminArticles] = useState<any[]>([]);
+  const [adminLoading, setAdminLoading] = useState(false);
+
+  function refresh() {
+    setAdminLoading(true);
+    getAllArticles()
+      .then(data => setAdminArticles(data as any[]))
+      .catch(() => setAdminArticles([]))
+      .finally(() => setAdminLoading(false));
+  }
+
+  useEffect(() => { refresh(); }, []);
+
+  return (
+    <motion.div key="admin" {...PT}>
+      <AdminDashboard
+        onBack={() => navigate('/')}
+        savedCount={savedCount}
+        articles={adminArticles}
+        loading={adminLoading}
+        onRefresh={refresh}
+      />
+    </motion.div>
+  );
+}
+
+/* ── UserMenu ───────────────────────────────────────────────────── */
 
 interface UserMenuProps {
   user: { id: string; name: string; isAdmin?: boolean };
@@ -63,20 +219,34 @@ function UserMenu({ user, onLogout, onGoToProfile, onGoToReadingList, onGoToAdmi
             <p className="text-xs text-muted-foreground">Signed in as</p>
             <p className="text-sm text-foreground truncate font-medium">{user.name}</p>
           </div>
-          <button onClick={() => { setOpen(false); onGoToProfile(); }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-muted/50 transition-colors">
+          <button
+            onClick={() => { setOpen(false); onGoToProfile(); }}
+            className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-muted/50 transition-colors"
+          >
             <User className="w-3.5 h-3.5" /> My Profile
           </button>
-          <button onClick={() => { setOpen(false); onGoToReadingList(); }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-muted/50 transition-colors">
+          <button
+            onClick={() => { setOpen(false); onGoToReadingList(); }}
+            className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-muted/50 transition-colors"
+          >
             <Bookmark className="w-3.5 h-3.5" /> Reading List
-            {savedCount > 0 && <span className="ml-auto bg-primary/10 text-primary text-xs rounded-full px-1.5 py-0.5">{savedCount}</span>}
+            {savedCount > 0 && (
+              <span className="ml-auto bg-primary/10 text-primary text-xs rounded-full px-1.5 py-0.5">{savedCount}</span>
+            )}
           </button>
           {user.isAdmin && (
-            <button onClick={() => { setOpen(false); onGoToAdmin(); }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-muted/50 transition-colors">
+            <button
+              onClick={() => { setOpen(false); onGoToAdmin(); }}
+              className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-muted/50 transition-colors"
+            >
               <LayoutDashboard className="w-3.5 h-3.5" /> Admin Dashboard
             </button>
           )}
           <div className="border-t border-border mt-1 pt-1">
-            <button onClick={() => { setOpen(false); onLogout(); }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-destructive hover:bg-muted/50 transition-colors">
+            <button
+              onClick={() => { setOpen(false); onLogout(); }}
+              className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-destructive hover:bg-muted/50 transition-colors"
+            >
               <LogOut className="w-3.5 h-3.5" /> Sign out
             </button>
           </div>
@@ -118,7 +288,7 @@ function NewsletterSection() {
             type="email"
             required
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={e => setEmail(e.target.value)}
             placeholder="Enter your email"
             className="flex-1 px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-input-background"
           />
@@ -137,9 +307,25 @@ function NewsletterSection() {
   );
 }
 
-/* ── App ────────────────────────────────────────────────────────── */
+/* ── Empty State ────────────────────────────────────────────────── */
 
-type AppView = 'main' | 'article' | 'profile' | 'author' | 'admin' | 'gallery' | 'privacy' | 'terms' | 'cookies' | 'about' | 'contact';
+function EmptyState({ category }: { category: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-24 text-center">
+      <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center mb-6">
+        <BookMarked className="w-9 h-9 text-muted-foreground/40" />
+      </div>
+      <h3 className="text-xl text-foreground mb-2">No stories yet</h3>
+      <p className="text-muted-foreground text-sm max-w-xs leading-relaxed">
+        {category !== 'All'
+          ? `We haven't published any "${category}" stories yet. Check back soon or explore another category.`
+          : 'No stories have been published yet. Check back soon.'}
+      </p>
+    </div>
+  );
+}
+
+/* ── App ────────────────────────────────────────────────────────── */
 
 interface AppProps {
   user?: { id: string; name: string; isAdmin?: boolean } | null;
@@ -149,34 +335,9 @@ interface AppProps {
   onDismissSignInPrompt?: () => void;
 }
 
-function formatDate(d: string | null) {
-  if (!d) return '';
-  return new Date(d).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-}
-
-function toComponentArticle(row: any) {
-  return {
-    id: row.id,
-    title: row.title,
-    slug: row.slug,
-    excerpt: row.excerpt,
-    body: row.body || [],
-    image: row.image_url,
-    category: row.categories?.name || '',
-    subcategory: row.subcategories?.name || '',
-    author: row.authors?.name || '',
-    authorBio: row.authors?.bio || '',
-    date: formatDate(row.published_at),
-    readTime: `${row.read_time_minutes} min read`,
-    featured: row.featured,
-  };
-}
-
 export default function App({ user, onLogout, onGoToLogin, showSignInPrompt, onDismissSignInPrompt }: AppProps) {
-  const [appView, setAppView] = useState<AppView>('main');
-  const [prevView, setPrevView] = useState<AppView>('main');
-  const [selectedArticle, setSelectedArticle] = useState<any>(null);
-  const [selectedAuthor, setSelectedAuthor] = useState('');
+  const navigate = useNavigate();
+  const location = useLocation();
   const [profileTab, setProfileTab] = useState<'profile' | 'reading-list' | 'preferences'>('profile');
   const [activeCategory, setActiveCategory] = useState('All');
   const [activeSubcategory, setActiveSubcategory] = useState('All');
@@ -185,19 +346,22 @@ export default function App({ user, onLogout, onGoToLogin, showSignInPrompt, onD
   const [savedIds, setSavedIds] = useState<Set<number>>(new Set());
   const [darkMode, setDarkMode] = useState(false);
   const [articles, setArticles] = useState<any[]>([]);
-  const [adminArticles, setAdminArticles] = useState<any[]>([]);
-  const [adminLoading, setAdminLoading] = useState(false);
   const [dbCategories, setDbCategories] = useState<{ name: string; slug: string }[]>([]);
   const [subcategoryMap, setSubcategoryMap] = useState<Record<string, { name: string; slug: string }[]>>({});
   const [loading, setLoading] = useState(true);
 
-  // Map DB rows to component shape whenever articles change
-  const mappedArticles = articles.map(toComponentArticle);
+  const mappedArticles: MappedArticle[] = articles.map(toComponentArticle);
+
+  // Close overlays on navigation
+  useEffect(() => {
+    setSearchOpen(false);
+    setMenuOpen(false);
+  }, [location.pathname]);
 
   // Fetch categories and subcategories once
   useEffect(() => {
-    getCategories().then((cats) => setDbCategories(cats)).catch(() => {});
-    getAllSubcategories().then((subs) => {
+    getCategories().then(cats => setDbCategories(cats)).catch(() => {});
+    getAllSubcategories().then(subs => {
       const map: Record<string, { name: string; slug: string }[]> = {};
       for (const sub of subs as any[]) {
         const catName = (sub as any).categories?.name || '';
@@ -211,82 +375,60 @@ export default function App({ user, onLogout, onGoToLogin, showSignInPrompt, onD
   // Fetch articles when filters change
   useEffect(() => {
     setLoading(true);
-    const cat = dbCategories.find((c) => c.name === activeCategory);
+    const cat = dbCategories.find(c => c.name === activeCategory);
     getArticles({
       categorySlug: cat?.slug,
-      subcategorySlug: activeSubcategory !== 'All' ? Object.values(subcategoryMap).flat().find(s => s.name === activeSubcategory)?.slug : undefined,
+      subcategorySlug:
+        activeSubcategory !== 'All'
+          ? Object.values(subcategoryMap).flat().find(s => s.name === activeSubcategory)?.slug
+          : undefined,
     })
-      .then((data) => setArticles(data as any[]))
+      .then(data => setArticles(data as any[]))
       .catch(() => setArticles([]))
       .finally(() => setLoading(false));
   }, [activeCategory, activeSubcategory, dbCategories]);
 
-  // Fetch bookmarks
+  // Fetch bookmarks when user changes
   useEffect(() => {
     if (!user?.id) return;
-    getBookmarks(user.id).then((data) => {
-      setSavedIds(new Set(data.map((b: any) => b.article_id)));
-    }).catch(() => {});
+    getBookmarks(user.id)
+      .then(data => setSavedIds(new Set(data.map((b: any) => b.article_id))))
+      .catch(() => {});
   }, [user]);
 
-  // Fetch all articles for admin view
-  function refreshAdminArticles() {
-    if (!user) return;
-    setAdminLoading(true);
-    getAllArticles()
-      .then((data) => setAdminArticles(data as any[]))
-      .catch(() => setAdminArticles([]))
-      .finally(() => setAdminLoading(false));
-  }
-
-  useEffect(() => {
-    if (appView === 'admin' && user) {
-      refreshAdminArticles();
-    }
-  }, [appView, user]);
-
+  // Sync dark mode class
   useEffect(() => {
     document.documentElement.classList.toggle('dark', darkMode);
   }, [darkMode]);
-
-  function navigate(view: AppView) {
-    setPrevView(appView);
-    setAppView(view);
-  }
 
   function handleCategoryChange(category: string) {
     setActiveCategory(category);
     setActiveSubcategory('All');
   }
 
-  function handleArticleClick(article: any) {
-    setSelectedArticle(article);
-    navigate('article');
+  function handleArticleClick(article: MappedArticle) {
+    navigate(`/articles/${article.slug}`);
   }
 
   function handleAuthorClick(name: string) {
-    setSelectedAuthor(name);
-    navigate('author');
+    navigate(`/authors/${encodeURIComponent(name)}`);
   }
 
-  async function handleToggleSave(article: any) {
+  async function handleToggleSave(article: MappedArticle) {
     if (!user?.id) return;
     const already = savedIds.has(article.id);
     if (already) {
       await removeBookmark(user.id, article.id);
-      setSavedIds((prev) => { const n = new Set(prev); n.delete(article.id); return n; });
+      setSavedIds(prev => { const n = new Set(prev); n.delete(article.id); return n; });
     } else {
       await addBookmark(user.id, article.id);
-      setSavedIds((prev) => { const n = new Set(prev); n.add(article.id); return n; });
+      setSavedIds(prev => { const n = new Set(prev); n.add(article.id); return n; });
     }
   }
 
   const dbSubcategories = activeCategory !== 'All' ? subcategoryMap[activeCategory] ?? [] : [];
-
-  const featuredArticle = mappedArticles.find((a: any) => a.featured);
-
-  const savedArticles = mappedArticles.filter((a: any) => savedIds.has(a.id));
-
+  const featuredArticle = mappedArticles.find(a => a.featured);
+  const savedArticles = mappedArticles.filter(a => savedIds.has(a.id));
   const sectionTitle =
     activeSubcategory !== 'All'
       ? `${activeCategory} — ${activeSubcategory}`
@@ -294,303 +436,341 @@ export default function App({ user, onLogout, onGoToLogin, showSignInPrompt, onD
       ? 'Latest Stories'
       : `${activeCategory} Stories`;
 
-  /* ── Sub-views ── */
-
-  if (appView === 'article' && selectedArticle) {
-    const related = mappedArticles.filter((a: any) => a.id !== selectedArticle.id && a.category === selectedArticle.category).slice(0, 3);
-    return (
-      <ArticleDetailPage
-        article={selectedArticle}
-        onBack={() => setAppView(prevView)}
-        saved={savedIds.has(selectedArticle.id)}
-        onToggleSave={() => handleToggleSave(selectedArticle)}
-        relatedArticles={related}
-        onArticleClick={handleArticleClick}
-        onAuthorClick={handleAuthorClick}
-        userName={user?.name}
-        userId={user?.id}
-      />
-    );
-  }
-
-  if (appView === 'profile') {
-    return (
-      <motion.div key="profile" {...PAGE_TRANSITION}>
-        <ProfilePage
-          user={user ?? { id: '', name: 'Reader' }}
-          savedArticles={savedArticles}
-          onBack={() => setAppView('main')}
-          onArticleClick={handleArticleClick}
-          onLogout={onLogout ?? (() => {})}
-          defaultTab={profileTab}
-        />
-      </motion.div>
-    );
-  }
-
-  if (appView === 'author') {
-    return (
-      <motion.div key="author" {...PAGE_TRANSITION}>
-        <AuthorPage
-          authorName={selectedAuthor}
-          onBack={() => setAppView('main')}
-          onArticleClick={handleArticleClick}
-          savedIds={savedIds}
-          onToggleSave={handleToggleSave}
-          onAuthorClick={handleAuthorClick}
-          allArticles={mappedArticles}
-        />
-      </motion.div>
-    );
-  }
-
-  if (appView === 'gallery') {
-    return (
-      <motion.div key="gallery" {...PAGE_TRANSITION}>
-        <GalleryPage
-          onBack={() => setAppView('main')}
-          onImageClick={(slug) => {
-            const article = mappedArticles.find((a: any) => a.slug === slug);
-            if (article) { setSelectedArticle(article); setAppView('article'); }
-          }}
-        />
-      </motion.div>
-    );
-  }
-
-  if (appView === 'admin') {
-    return (
-      <motion.div key="admin" {...PAGE_TRANSITION}>
-        <AdminDashboard
-          onBack={() => setAppView('main')}
-          savedCount={savedIds.size}
-          articles={adminArticles}
-          loading={adminLoading}
-          onRefresh={refreshAdminArticles}
-        />
-      </motion.div>
-    );
-  }
-
-  const staticPages: Record<string, { title: string; sections: StaticSection[] }> = {
-    privacy: privacyPage,
-    terms: termsPage,
-    cookies: cookiesPage,
-    about: aboutPage,
-    contact: contactPage,
-  };
-
-  if (appView in staticPages) {
-    const page = staticPages[appView];
-    return (
-      <motion.div key={appView} {...PAGE_TRANSITION}>
-        <StaticPage title={page.title} sections={page.sections} onBack={() => setAppView('main')} />
-      </motion.div>
-    );
-  }
-
-  /* ── Main magazine view ── */
   return (
-    <motion.div key="main" {...PAGE_TRANSITION} className="min-h-screen bg-background">
-      <AnimatePresence>
-        {showSignInPrompt && (
-          <motion.div
-            initial={{ opacity: 0, y: 16, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 8, scale: 0.95 }}
-            transition={{ duration: 0.3, ease: 'easeOut' }}
-            className="fixed bottom-4 sm:bottom-6 right-4 sm:right-6 z-50 max-w-[calc(100vw-2rem)] sm:max-w-sm bg-card border border-border rounded-xl shadow-xl p-4 flex items-start gap-3"
-          >
-            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
-              <User className="w-4 h-4 text-primary" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm text-foreground font-medium">Sign in to Ubuntu Essence</p>
-              <p className="text-xs text-muted-foreground mt-1">Save articles, bookmark stories, and personalize your reading experience.</p>
-              <div className="flex items-center gap-2 mt-3">
-                <button onClick={onGoToLogin} className="text-xs px-3 py-1.5 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity">
-                  Sign In
-                </button>
-                <button onClick={onDismissSignInPrompt} className="text-xs px-3 py-1.5 text-muted-foreground hover:text-foreground transition-colors">
-                  Maybe later
-                </button>
-              </div>
-            </div>
-            <button onClick={onDismissSignInPrompt} className="shrink-0 text-muted-foreground hover:text-foreground transition-colors p-0.5">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-            </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
+    <>
+      {/* Global overlays */}
       {searchOpen && (
-        <SearchOverlay articles={mappedArticles} onClose={() => setSearchOpen(false)} onArticleClick={handleArticleClick} />
+        <SearchOverlay
+          articles={mappedArticles}
+          onClose={() => setSearchOpen(false)}
+          onArticleClick={handleArticleClick}
+        />
       )}
       {menuOpen && (
         <MobileSidebar
           activeCategory={activeCategory}
-          categories={dbCategories.map((c) => c.name)}
+          categories={dbCategories.map(c => c.name)}
           onCategoryChange={handleCategoryChange}
           onClose={() => setMenuOpen(false)}
-          onGoToProfile={() => { setProfileTab('profile'); navigate('profile'); }}
-          onGoToReadingList={() => { setProfileTab('reading-list'); navigate('profile'); }}
-          onGoToAdmin={user?.isAdmin ? () => navigate('admin') : undefined}
-          onGoToGallery={() => navigate('gallery')}
+          onGoToProfile={() => { setProfileTab('profile'); navigate('/profile'); }}
+          onGoToReadingList={() => { setProfileTab('reading-list'); navigate('/profile'); }}
+          onGoToAdmin={user?.isAdmin ? () => navigate('/admin') : undefined}
+          onGoToGallery={() => navigate('/gallery')}
           user={user}
           savedCount={savedIds.size}
         />
       )}
 
-      {/* Header */}
-      <header className="border-b border-border sticky top-0 z-30 bg-background/95 backdrop-blur-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <button className="p-2 hover:bg-muted rounded-lg transition-colors" onClick={() => setMenuOpen(true)}>
-              <Menu className="w-6 h-6 text-foreground" />
-            </button>
+      <Routes>
+        {/* ── Main magazine ── */}
+        <Route
+          path="/"
+          element={
+            <motion.div key="main" {...PT} className="min-h-screen bg-background">
+              {/* Sign-in nudge */}
+              <AnimatePresence>
+                {showSignInPrompt && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 16, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 8, scale: 0.95 }}
+                    transition={{ duration: 0.3, ease: 'easeOut' }}
+                    className="fixed bottom-4 sm:bottom-6 right-4 sm:right-6 z-50 max-w-[calc(100vw-2rem)] sm:max-w-sm bg-card border border-border rounded-xl shadow-xl p-4 flex items-start gap-3"
+                  >
+                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+                      <User className="w-4 h-4 text-primary" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-foreground font-medium">Sign in to Ubuntu Essence</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Save articles, bookmark stories, and personalize your reading experience.
+                      </p>
+                      <div className="flex items-center gap-2 mt-3">
+                        <button
+                          onClick={onGoToLogin}
+                          className="text-xs px-3 py-1.5 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity"
+                        >
+                          Sign In
+                        </button>
+                        <button
+                          onClick={onDismissSignInPrompt}
+                          className="text-xs px-3 py-1.5 text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          Maybe later
+                        </button>
+                      </div>
+                    </div>
+                    <button
+                      onClick={onDismissSignInPrompt}
+                      className="shrink-0 text-muted-foreground hover:text-foreground transition-colors p-0.5"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
-            <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
-              <BookOpen className="w-6 h-6 sm:w-8 sm:h-8 text-primary" />
-              <h1 className="text-sm sm:text-lg xl:text-xl tracking-tight text-primary">UBUNTU ESSENCE</h1>
-            </div>
+              {/* Header */}
+              <header className="border-b border-border sticky top-0 z-30 bg-background/95 backdrop-blur-sm">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                  <div className="flex items-center justify-between h-16">
+                    <button className="p-2 hover:bg-muted rounded-lg transition-colors" onClick={() => setMenuOpen(true)}>
+                      <Menu className="w-6 h-6 text-foreground" />
+                    </button>
 
-            <div className="flex items-center gap-1">
-              {/* Dark mode toggle */}
-              <button
-                onClick={() => setDarkMode(!darkMode)}
-                className="p-2 hover:bg-muted rounded-lg transition-colors"
-                aria-label="Toggle dark mode"
-              >
-                {darkMode ? <Sun className="w-5 h-5 text-foreground" /> : <Moon className="w-5 h-5 text-foreground" />}
-              </button>
+                    <button
+                      onClick={() => navigate('/')}
+                      className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0 hover:opacity-80 transition-opacity"
+                    >
+                      <BookOpen className="w-6 h-6 sm:w-8 sm:h-8 text-primary" />
+                      <span
+                        className="text-sm sm:text-lg xl:text-xl tracking-tight text-primary font-semibold"
+                        style={{ fontFamily: "'Inter', system-ui, sans-serif" }}
+                      >
+                        UBUNTU ESSENCE
+                      </span>
+                    </button>
 
-              <button className="flex items-center gap-1 px-3 py-1.5 text-sm text-muted-foreground hover:text-primary transition-colors" onClick={() => navigate('gallery')}>
-                <span className="hidden sm:inline">Gallery</span>
-                <svg className="w-5 h-5 sm:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-              </button>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => setDarkMode(!darkMode)}
+                        className="p-2 hover:bg-muted rounded-lg transition-colors"
+                        aria-label="Toggle dark mode"
+                      >
+                        {darkMode ? <Sun className="w-5 h-5 text-foreground" /> : <Moon className="w-5 h-5 text-foreground" />}
+                      </button>
 
-              <button className="p-2 hover:bg-muted rounded-lg transition-colors" onClick={() => setSearchOpen(true)}>
-                <Search className="w-5 h-5 text-foreground" />
-              </button>
+                      <button
+                        className="flex items-center gap-1 px-3 py-1.5 text-sm text-muted-foreground hover:text-primary transition-colors"
+                        onClick={() => navigate('/gallery')}
+                      >
+                        <span className="hidden sm:inline">Gallery</span>
+                        <svg className="w-5 h-5 sm:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                      </button>
 
-              {user && onLogout ? (
-                <UserMenu
-                  user={user}
-                  onLogout={onLogout}
-                  onGoToProfile={() => { setProfileTab('profile'); navigate('profile'); }}
-                  onGoToReadingList={() => { setProfileTab('reading-list'); navigate('profile'); }}
-                  onGoToAdmin={() => navigate('admin')}
-                  savedCount={savedIds.size}
+                      <button className="p-2 hover:bg-muted rounded-lg transition-colors" onClick={() => setSearchOpen(true)}>
+                        <Search className="w-5 h-5 text-foreground" />
+                      </button>
+
+                      {user && onLogout ? (
+                        <UserMenu
+                          user={user}
+                          onLogout={onLogout}
+                          onGoToProfile={() => { setProfileTab('profile'); navigate('/profile'); }}
+                          onGoToReadingList={() => { setProfileTab('reading-list'); navigate('/profile'); }}
+                          onGoToAdmin={() => navigate('/admin')}
+                          savedCount={savedIds.size}
+                        />
+                      ) : (
+                        <button onClick={onGoToLogin} className="p-2 hover:bg-muted rounded-lg transition-colors">
+                          <User className="w-5 h-5 text-foreground" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </header>
+
+              {/* Category Nav */}
+              <div className="hidden sm:block">
+                <CategoryNav
+                  categories={['All', ...dbCategories.map(c => c.name)]}
+                  activeCategory={activeCategory}
+                  onCategoryChange={handleCategoryChange}
+                  subcategories={dbSubcategories.map(s => s.name)}
+                  activeSubcategory={activeSubcategory}
+                  onSubcategoryChange={setActiveSubcategory}
                 />
-              ) : (
-                <button onClick={onGoToLogin} className="p-2 hover:bg-muted rounded-lg transition-colors">
-                  <User className="w-5 h-5 text-foreground" />
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      </header>
+              </div>
 
-      {/* Category Navigation */}
-      <div className="hidden sm:block">
-      <CategoryNav
-        categories={['All', ...dbCategories.map((c) => c.name)]}
-        activeCategory={activeCategory}
-        onCategoryChange={handleCategoryChange}
-        subcategories={dbSubcategories.map((s) => s.name)}
-        activeSubcategory={activeSubcategory}
-        onSubcategoryChange={setActiveSubcategory}
-      />
-      </div>
+              {/* Main content */}
+              <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+                {loading ? (
+                  <div className="flex justify-center py-24">
+                    <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                  </div>
+                ) : (
+                  <>
+                    {activeCategory === 'All' && featuredArticle && (
+                      <FeaturedArticle
+                        article={featuredArticle}
+                        onClick={handleArticleClick}
+                        saved={savedIds.has(featuredArticle.id)}
+                        onToggleSave={() => handleToggleSave(featuredArticle)}
+                        onAuthorClick={handleAuthorClick}
+                      />
+                    )}
 
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {loading ? (
-          <div className="flex justify-center py-24">
-            <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-          </div>
-        ) : (
-          <>
-        {activeCategory === 'All' && featuredArticle && (
-          <FeaturedArticle
-            article={featuredArticle}
-            onClick={handleArticleClick}
-            saved={savedIds.has(featuredArticle.id)}
-            onToggleSave={() => handleToggleSave(featuredArticle)}
-            onAuthorClick={handleAuthorClick}
-          />
-        )}
+                    <section className={activeCategory === 'All' && featuredArticle ? 'mt-16' : ''}>
+                      <div className="flex items-center justify-between mb-8">
+                        <h2 className="text-3xl tracking-tight">{sectionTitle}</h2>
+                        {savedIds.size > 0 && (
+                          <button
+                            onClick={() => { setProfileTab('reading-list'); navigate('/profile'); }}
+                            className="flex items-center gap-1.5 text-sm text-primary hover:underline"
+                          >
+                            <Bookmark className="w-3.5 h-3.5" />
+                            {savedIds.size} saved
+                          </button>
+                        )}
+                      </div>
 
-        <section className={activeCategory === 'All' && featuredArticle ? 'mt-16' : ''}>
-          <div className="flex items-center justify-between mb-8">
-            <h2 className="text-3xl tracking-tight">{sectionTitle}</h2>
-            {savedIds.size > 0 && (
-              <button onClick={() => navigate('profile')} className="flex items-center gap-1.5 text-sm text-primary hover:underline">
-                <Bookmark className="w-3.5 h-3.5" />
-                {savedIds.size} saved
-              </button>
-            )}
-          </div>
+                      {articles.length > 0 ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                          {mappedArticles.map(article => (
+                            <ArticleCard
+                              key={article.id}
+                              article={article}
+                              onClick={handleArticleClick}
+                              saved={savedIds.has(article.id)}
+                              onToggleSave={handleToggleSave}
+                              onAuthorClick={handleAuthorClick}
+                            />
+                          ))}
+                        </div>
+                      ) : (
+                        <EmptyState category={activeCategory} />
+                      )}
+                    </section>
+                  </>
+                )}
 
-          {articles.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {mappedArticles.map((article) => (
-                <ArticleCard
-                  key={article.id}
-                  article={article}
-                  onClick={handleArticleClick}
-                  saved={savedIds.has(article.id)}
-                  onToggleSave={handleToggleSave}
-                  onAuthorClick={handleAuthorClick}
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-16 text-muted-foreground">
-              <p>No articles found in this section.</p>
-            </div>
-          )}
-        </section>
-        </>)}
+                <NewsletterSection />
+              </main>
 
-        {/* Newsletter */}
-        <NewsletterSection />
-      </main>
+              {/* Footer */}
+              <footer className="border-t border-border mt-20 bg-muted/30">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+                    <div>
+                      <h4 className="mb-4 text-foreground">About</h4>
+                      <ul className="space-y-2 text-sm text-muted-foreground">
+                        <li><button onClick={() => navigate('/about')} className="hover:text-primary transition-colors">Our Story</button></li>
+                        <li><button onClick={() => navigate('/about')} className="hover:text-primary transition-colors">Mission</button></li>
+                        <li><button onClick={() => navigate('/contact')} className="hover:text-primary transition-colors">Contact</button></li>
+                      </ul>
+                    </div>
+                    <div>
+                      <h4 className="mb-4 text-foreground">Explore</h4>
+                      <ul className="space-y-2 text-sm text-muted-foreground">
+                        {dbCategories.slice(0, 5).map(cat => (
+                          <li key={cat.slug}>
+                            <button
+                              onClick={() => { handleCategoryChange(cat.name); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                              className="hover:text-primary transition-colors text-left"
+                            >
+                              {cat.name}
+                            </button>
+                          </li>
+                        ))}
+                        <li><button onClick={() => navigate('/gallery')} className="hover:text-primary transition-colors">Gallery</button></li>
+                      </ul>
+                    </div>
+                    <div>
+                      <h4 className="mb-4 text-foreground">Connect</h4>
+                      <ul className="space-y-2 text-sm text-muted-foreground">
+                        <li><a href="#" className="hover:text-primary transition-colors">Instagram</a></li>
+                        <li><a href="#" className="hover:text-primary transition-colors">X</a></li>
+                        <li><a href="#" className="hover:text-primary transition-colors">LinkedIn</a></li>
+                      </ul>
+                    </div>
+                    <div>
+                      <h4 className="mb-4 text-foreground">Legal</h4>
+                      <ul className="space-y-2 text-sm text-muted-foreground">
+                        <li><button onClick={() => navigate('/privacy')} className="hover:text-primary transition-colors">Privacy</button></li>
+                        <li><button onClick={() => navigate('/terms')} className="hover:text-primary transition-colors">Terms</button></li>
+                        <li><button onClick={() => navigate('/cookies')} className="hover:text-primary transition-colors">Cookies</button></li>
+                      </ul>
+                    </div>
+                  </div>
+                  <div className="mt-12 pt-8 border-t border-border text-center text-sm text-muted-foreground">
+                    © 2026 Ubuntu Essence. Celebrating African culture and community.
+                  </div>
+                </div>
+              </footer>
+            </motion.div>
+          }
+        />
 
-      {/* Footer */}
-      <footer className="border-t border-border mt-20 bg-muted/30">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-            <div>
-              <h4 className="mb-4 text-foreground">About</h4>
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><button onClick={() => navigate('about')} className="hover:text-primary transition-colors">Our Story</button></li>
-                <li><button onClick={() => navigate('about')} className="hover:text-primary transition-colors">Mission</button></li>
-                <li><button onClick={() => navigate('contact')} className="hover:text-primary transition-colors">Contact</button></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="mb-4 text-foreground">Connect</h4>
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><a href="#" className="hover:text-primary transition-colors">Instagram</a></li>
-                <li><a href="#" className="hover:text-primary transition-colors">X</a></li>
-                <li><a href="#" className="hover:text-primary transition-colors">LinkedIn</a></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="mb-4 text-foreground">Legal</h4>
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><button onClick={() => navigate('privacy')} className="hover:text-primary transition-colors">Privacy</button></li>
-                <li><button onClick={() => navigate('terms')} className="hover:text-primary transition-colors">Terms</button></li>
-                <li><button onClick={() => navigate('cookies')} className="hover:text-primary transition-colors">Cookies</button></li>
-              </ul>
-            </div>
-          </div>
-          <div className="mt-12 pt-8 border-t border-border text-center text-sm text-muted-foreground">
-            © 2026 Ubuntu Essence. Celebrating African culture and community.
-          </div>
-        </div>
-      </footer>
-    </motion.div>
+        {/* ── Article detail ── */}
+        <Route
+          path="/articles/:slug"
+          element={
+            <ArticlePageWrapper
+              mappedArticles={mappedArticles}
+              savedIds={savedIds}
+              onToggleSave={handleToggleSave}
+              onAuthorClick={handleAuthorClick}
+              onArticleClick={handleArticleClick}
+              user={user}
+            />
+          }
+        />
+
+        {/* ── Author page ── */}
+        <Route
+          path="/authors/:authorName"
+          element={
+            <AuthorPageWrapper
+              mappedArticles={mappedArticles}
+              savedIds={savedIds}
+              onToggleSave={handleToggleSave}
+              onArticleClick={handleArticleClick}
+            />
+          }
+        />
+
+        {/* ── Gallery ── */}
+        <Route
+          path="/gallery"
+          element={
+            <motion.div key="gallery" {...PT}>
+              <GalleryPage
+                onBack={() => navigate('/')}
+                onImageClick={slug => {
+                  const article = mappedArticles.find(a => a.slug === slug);
+                  if (article) navigate(`/articles/${article.slug}`);
+                  else navigate('/');
+                }}
+              />
+            </motion.div>
+          }
+        />
+
+        {/* ── Profile ── */}
+        <Route
+          path="/profile"
+          element={
+            <motion.div key="profile" {...PT}>
+              <ProfilePage
+                user={user ?? { id: '', name: 'Reader' }}
+                savedArticles={savedArticles}
+                onBack={() => navigate('/')}
+                onArticleClick={handleArticleClick}
+                onLogout={onLogout ?? (() => {})}
+                defaultTab={profileTab}
+              />
+            </motion.div>
+          }
+        />
+
+        {/* ── Admin ── */}
+        <Route path="/admin" element={<AdminPageWrapper savedCount={savedIds.size} />} />
+
+        {/* ── Static pages ── */}
+        <Route path="/privacy"  element={<motion.div key="privacy"  {...PT}><StaticPage title={privacyPage.title}  sections={privacyPage.sections}  onBack={() => navigate('/')} /></motion.div>} />
+        <Route path="/terms"    element={<motion.div key="terms"    {...PT}><StaticPage title={termsPage.title}    sections={termsPage.sections}    onBack={() => navigate('/')} /></motion.div>} />
+        <Route path="/cookies"  element={<motion.div key="cookies"  {...PT}><StaticPage title={cookiesPage.title}  sections={cookiesPage.sections}  onBack={() => navigate('/')} /></motion.div>} />
+        <Route path="/about"    element={<motion.div key="about"    {...PT}><StaticPage title={aboutPage.title}    sections={aboutPage.sections}    onBack={() => navigate('/')} /></motion.div>} />
+        <Route path="/contact"  element={<motion.div key="contact"  {...PT}><StaticPage title={contactPage.title}  sections={contactPage.sections}  onBack={() => navigate('/')} /></motion.div>} />
+
+        {/* ── Fallback ── */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </>
   );
 }

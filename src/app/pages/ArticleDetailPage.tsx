@@ -2,16 +2,16 @@ import { useEffect, useState } from 'react';
 import { ArrowLeft, Clock, Bookmark, BookmarkCheck, Share2, Facebook, Link } from 'lucide-react';
 import { motion } from 'motion/react';
 import { CommentsSection } from '../components/CommentsSection';
-
-interface Article { id: number; title: string; excerpt: string; body: string[]; image: string; category: string; subcategory: string; author: string; authorBio: string; date: string; readTime: string; }
+import { Avatar } from '../components/Avatar';
+import type { MappedArticle } from '../lib/article-types';
 
 interface ArticleDetailPageProps {
-  article: Article;
+  article: MappedArticle;
   onBack: () => void;
   saved: boolean;
   onToggleSave: () => void;
-  relatedArticles: Article[];
-  onArticleClick: (article: Article) => void;
+  relatedArticles: MappedArticle[];
+  onArticleClick: (article: MappedArticle) => void;
   onAuthorClick: (name: string) => void;
   userName?: string;
   userId?: string;
@@ -62,7 +62,10 @@ export function ArticleDetailPage({
         }`}
       >
         <div className="max-w-3xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-4">
-          <button onClick={onBack} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors flex-shrink-0">
+          <button
+            onClick={onBack}
+            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors flex-shrink-0"
+          >
             <ArrowLeft className="w-4 h-4" />Back
           </button>
           <p className="text-sm text-foreground line-clamp-1 flex-1 text-center">{article.title}</p>
@@ -73,7 +76,10 @@ export function ArticleDetailPage({
       </div>
 
       <div className="max-w-3xl mx-auto px-4 sm:px-6 pt-8 pb-20">
-        <button onClick={onBack} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors mb-10">
+        <button
+          onClick={onBack}
+          className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors mb-10"
+        >
           <ArrowLeft className="w-4 h-4" />Back to stories
         </button>
 
@@ -93,14 +99,17 @@ export function ArticleDetailPage({
         {/* Author + meta */}
         <div className="flex items-center justify-between py-5 border-y border-border mb-10">
           <div className="flex items-center gap-3">
-            <button
+            <Avatar
+              name={article.author}
+              src={article.authorAvatar}
+              size="md"
               onClick={() => onAuthorClick(article.author)}
-              className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-sm font-medium flex-shrink-0 hover:opacity-80 transition-opacity"
-            >
-              {article.author.charAt(0)}
-            </button>
+            />
             <div>
-              <button onClick={() => onAuthorClick(article.author)} className="text-sm text-foreground hover:text-primary transition-colors">
+              <button
+                onClick={() => onAuthorClick(article.author)}
+                className="text-sm text-foreground hover:text-primary transition-colors"
+              >
                 {article.author}
               </button>
               <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
@@ -122,12 +131,17 @@ export function ArticleDetailPage({
               {shareOpen && (
                 <div className="absolute right-0 top-full mt-2 w-40 bg-card border border-border rounded-xl shadow-lg py-1 z-50">
                   <button className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-muted/50 transition-colors">
-                    <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg> X
+                    <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                    </svg> X
                   </button>
                   <button className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-muted/50 transition-colors">
                     <Facebook className="w-3.5 h-3.5 text-blue-600" /> Facebook
                   </button>
-                  <button onClick={copyLink} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-muted/50 transition-colors">
+                  <button
+                    onClick={copyLink}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-muted/50 transition-colors"
+                  >
                     <Link className="w-3.5 h-3.5" /> {copied ? 'Copied!' : 'Copy link'}
                   </button>
                 </div>
@@ -175,16 +189,19 @@ export function ArticleDetailPage({
           <div className="flex-1 h-px bg-border" />
         </div>
 
-        {/* Author bio */}
+        {/* Author bio card */}
         <div className="flex gap-5 p-6 rounded-xl bg-muted/40 border border-border">
-          <button
+          <Avatar
+            name={article.author}
+            src={article.authorAvatar}
+            size="lg"
             onClick={() => onAuthorClick(article.author)}
-            className="w-14 h-14 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-lg font-medium flex-shrink-0 hover:opacity-80 transition-opacity"
-          >
-            {article.author.charAt(0)}
-          </button>
+          />
           <div>
-            <button onClick={() => onAuthorClick(article.author)} className="text-sm font-medium text-foreground hover:text-primary transition-colors mb-1 block text-left">
+            <button
+              onClick={() => onAuthorClick(article.author)}
+              className="text-sm font-medium text-foreground hover:text-primary transition-colors mb-1 block text-left"
+            >
               {article.author}
             </button>
             <p className="text-sm text-muted-foreground leading-relaxed">{article.authorBio}</p>
@@ -199,10 +216,14 @@ export function ArticleDetailPage({
           <section className="mt-16">
             <h2 className="text-2xl text-foreground mb-8">More stories</h2>
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {relatedArticles.map((related) => (
+              {relatedArticles.map(related => (
                 <button key={related.id} onClick={() => onArticleClick(related)} className="group text-left">
                   <div className="aspect-[4/3] overflow-hidden rounded-lg border border-border mb-3">
-                    <img src={related.image} alt={related.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                    <img
+                      src={related.image}
+                      alt={related.title}
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
                   </div>
                   <p className="text-xs uppercase tracking-wide text-primary mb-1">{related.category}</p>
                   <p className="text-sm font-medium text-foreground group-hover:text-primary transition-colors leading-snug">{related.title}</p>
