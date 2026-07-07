@@ -1,5 +1,6 @@
-import { ArrowLeft, BookOpen } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import type { StaticSection } from '../lib/legal-content';
+import logoUrl from './logo.jpg';
 
 interface StaticPageProps {
   title: string;
@@ -16,7 +17,11 @@ export function StaticPage({ title, sections, onBack }: StaticPageProps) {
             <ArrowLeft className="w-4 h-4" />Back
           </button>
           <div className="flex items-center gap-2 ml-auto sm:ml-0">
-            <BookOpen className="w-5 h-5 text-primary" />
+            <img
+              src={logoUrl}
+              alt="Ubuntu Essence"
+              className="w-5 h-5 object-contain mix-blend-multiply dark:invert dark:mix-blend-screen"
+            />
             <span className="text-sm tracking-tight text-primary font-medium">UBUNTU ESSENCE</span>
           </div>
         </div>

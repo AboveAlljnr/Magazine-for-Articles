@@ -3,6 +3,8 @@ import { Eye, EyeOff, BookOpen } from 'lucide-react';
 import { signIn } from '../../lib/api';
 import { supabase } from '../../lib/supabase';
 
+import logoUrl from '../components/logo.jpg';
+
 interface LoginPageProps {
   onLogin: () => void;
   onGoToRegister: () => void;
@@ -58,7 +60,11 @@ export function LoginPage({ onLogin, onGoToRegister, onGoToForgot }: LoginPagePr
 
         {/* Brand */}
         <div className="relative flex items-center gap-3">
-          <BookOpen className="w-9 h-9 text-white" />
+          <img
+            src={logoUrl}
+            alt="Ubuntu Essence"
+            className="w-9 h-9 object-contain invert mix-blend-screen"
+          />
           <span className="text-2xl tracking-widest text-white font-medium">UBUNTU ESSENCE</span>
         </div>
 
@@ -82,7 +88,11 @@ export function LoginPage({ onLogin, onGoToRegister, onGoToForgot }: LoginPagePr
       <div className="flex-1 flex flex-col justify-center px-6 py-12 sm:px-12 lg:px-16 bg-background">
         {/* Mobile brand */}
         <div className="flex items-center gap-2 mb-10 lg:hidden">
-          <BookOpen className="w-7 h-7 text-primary" />
+          <img
+            src={logoUrl}
+            alt="Ubuntu Essence"
+            className="w-7 h-7 object-contain mix-blend-multiply dark:invert dark:mix-blend-screen"
+          />
           <span className="text-xl tracking-widest text-primary font-medium">UBUNTU ESSENCE</span>
         </div>
 

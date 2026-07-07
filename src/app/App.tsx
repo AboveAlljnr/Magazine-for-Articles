@@ -18,6 +18,7 @@ import { GalleryPage } from './pages/GalleryPage';
 import { StaticPage } from './components/StaticPage';
 import { privacyPage, termsPage, cookiesPage, aboutPage, contactPage } from './lib/legal-content';
 import type { MappedArticle } from './lib/article-types';
+import logoUrl from './components/logo.jpg';
 import {
   getArticles, getCategories, getAllSubcategories, getBookmarks,
   addBookmark, removeBookmark, subscribeToNewsletter, getAllArticles, getArticleBySlug,
@@ -524,7 +525,11 @@ export default function App({ user, onLogout, onGoToLogin, showSignInPrompt, onD
                       onClick={() => navigate('/')}
                       className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0 hover:opacity-80 transition-opacity"
                     >
-                      <BookOpen className="w-6 h-6 sm:w-8 sm:h-8 text-primary" />
+                      <img
+                        src={logoUrl}
+                        alt="Ubuntu Essence"
+                        className="w-8 h-8 sm:w-9 sm:h-9 object-contain mix-blend-multiply dark:invert dark:mix-blend-screen"
+                      />
                       <span
                         className="text-sm sm:text-lg xl:text-xl tracking-tight text-primary font-semibold"
                         style={{ fontFamily: "'Inter', system-ui, sans-serif" }}

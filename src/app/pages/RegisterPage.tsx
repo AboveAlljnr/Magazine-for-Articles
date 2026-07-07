@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Eye, EyeOff, BookOpen, Check } from 'lucide-react';
 import { signUp, subscribeToNewsletter } from '../../lib/api';
+import logoUrl from '../components/logo.jpg';
 
 const interests = ['Culture', 'Fashion', 'Heritage', 'Arts', 'Travel', 'Lifestyle'];
 
@@ -76,7 +77,11 @@ export function RegisterPage({ onRegister, onGoToLogin }: RegisterPageProps) {
         </div>
 
         <div className="relative flex items-center gap-3">
-          <BookOpen className="w-9 h-9 text-white" />
+          <img
+            src={logoUrl}
+            alt="Ubuntu Essence"
+            className="w-9 h-9 object-contain invert mix-blend-screen"
+          />
           <span className="text-2xl tracking-widest text-white font-medium">UBUNTU ESSENCE</span>
         </div>
 
@@ -108,7 +113,11 @@ export function RegisterPage({ onRegister, onGoToLogin }: RegisterPageProps) {
       {/* Right form panel */}
       <div className="flex-1 overflow-y-auto flex flex-col justify-center px-6 py-12 sm:px-12 lg:px-14 bg-background">
         <div className="flex items-center gap-2 mb-8 lg:hidden">
-          <BookOpen className="w-7 h-7 text-primary" />
+          <img
+            src={logoUrl}
+            alt="Ubuntu Essence"
+            className="w-7 h-7 object-contain mix-blend-multiply dark:invert dark:mix-blend-screen"
+          />
           <span className="text-xl tracking-widest text-primary font-medium">UBUNTU ESSENCE</span>
         </div>
 

@@ -1,7 +1,8 @@
-import { ArrowLeft, BookOpen } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { ArticleCard } from '../components/ArticleCard';
 import { Avatar } from '../components/Avatar';
 import type { MappedArticle } from '../lib/article-types';
+import logoUrl from '../components/logo.jpg';
 
 interface AuthorPageProps {
   authorName: string;
@@ -39,7 +40,11 @@ export function AuthorPage({
             Back
           </button>
           <div className="flex items-center gap-2 ml-auto">
-            <BookOpen className="w-5 h-5 text-primary" />
+            <img
+              src={logoUrl}
+              alt="Ubuntu Essence"
+              className="w-5 h-5 object-contain mix-blend-multiply dark:invert dark:mix-blend-screen"
+            />
             <span className="text-sm tracking-widest text-primary" style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>UBUNTU ESSENCE</span>
           </div>
         </div>

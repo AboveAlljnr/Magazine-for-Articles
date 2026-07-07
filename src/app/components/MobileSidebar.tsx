@@ -1,6 +1,8 @@
 import { useEffect } from 'react';
 import { X, BookOpen, User, Bookmark, Home, LayoutDashboard, Image } from 'lucide-react';
 
+import logoUrl from './logo.jpg';
+
 interface MobileSidebarProps {
   activeCategory: string;
   categories: string[];
@@ -53,7 +55,11 @@ export function MobileSidebar({
           style={{ background: 'linear-gradient(135deg, #8b3a1a 0%, #b8652f 100%)' }}
         >
           <div className="flex items-center gap-2.5">
-            <BookOpen className="w-6 h-6 text-white" />
+            <img
+              src={logoUrl}
+              alt="Ubuntu Essence"
+              className="w-6 h-6 object-contain invert mix-blend-screen"
+            />
             <span className="text-base tracking-widest text-white font-medium">UBUNTU ESSENCE</span>
           </div>
           <button onClick={onClose} className="text-white/70 hover:text-white transition-colors">
