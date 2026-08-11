@@ -272,15 +272,15 @@ export async function getComments(articleId: number) {
       profiles!inner(display_name, avatar_url)
     `)
     .eq('article_id', articleId)
-    .order('created_at', { ascending: false });
+    .order('created_at', { ascending: true });
   if (error) throw error;
   return data as any[];
 }
 
-export async function addComment(articleId: number, userId: string, body: string) {
+export async function addComment(articleId: number, userId: string, body: string, parentId?: number | null) {
   const { data, error } = await supabase
     .from('comments')
-    .insert({ article_id: articleId, user_id: userId, body })
+    .insert({ article_id: articleId, user_id: userId, body, parent_id: parentId || null })
     .select(`
       *,
       profiles!inner(display_name, avatar_url)

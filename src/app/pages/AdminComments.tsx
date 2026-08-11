@@ -58,6 +58,9 @@ export function AdminComments() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-sm font-medium text-foreground">{comment.profiles?.display_name || 'Unknown'}</span>
+                  {comment.parent_id && (
+                    <span className="text-[10px] uppercase tracking-wider bg-muted text-muted-foreground px-1.5 py-0.5 rounded">reply</span>
+                  )}
                   <span className="text-xs text-muted-foreground">
                     {new Date(comment.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}
                   </span>
