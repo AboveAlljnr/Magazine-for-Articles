@@ -3,6 +3,7 @@ import { ArrowLeft, Clock, Bookmark, BookmarkCheck, Share2, Facebook, Link } fro
 import { motion } from 'motion/react';
 import { CommentsSection } from '../components/CommentsSection';
 import { Avatar } from '../components/Avatar';
+import { applySeo, resetSeo } from '../lib/seo';
 import type { MappedArticle } from '../lib/article-types';
 
 interface ArticleDetailPageProps {
@@ -38,6 +39,17 @@ export function ArticleDetailPage({
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, [article.id]);
+
+  useEffect(() => {
+    applySeo({
+      title: `${article.title} | Ubuntu Essence`,
+      description: article.excerpt,
+      image: article.image,
+      url: window.location.href,
+      type: 'article',
+    });
+    return () => resetSeo();
+  }, [article]);
 
   function copyLink() {
     navigator.clipboard.writeText(window.location.href).then(() => {

@@ -17,6 +17,7 @@ import { AdminDashboard } from './pages/AdminDashboard';
 import { GalleryPage } from './pages/GalleryPage';
 import { StaticPage } from './components/StaticPage';
 import { privacyPage, termsPage, cookiesPage, aboutPage, contactPage } from './lib/legal-content';
+import { applySeo, DEFAULT_TITLE } from './lib/seo';
 import type { MappedArticle } from './lib/article-types';
 import logoUrl from './components/logo.jpg';
 import {
@@ -401,6 +402,18 @@ export default function App({ user, onLogout, onGoToLogin, showSignInPrompt, onD
   useEffect(() => {
     document.documentElement.classList.toggle('dark', darkMode);
   }, [darkMode]);
+
+  // Category-aware titles on the home page
+  useEffect(() => {
+    if (location.pathname === '/') {
+      applySeo({
+        title:
+          activeCategory === 'All'
+            ? DEFAULT_TITLE
+            : `${activeCategory} Stories | Ubuntu Essence`,
+      });
+    }
+  }, [activeCategory, location.pathname]);
 
   function handleCategoryChange(category: string) {
     setActiveCategory(category);
