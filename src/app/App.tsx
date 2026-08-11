@@ -110,7 +110,7 @@ function ArticlePageWrapper({
     if (!article) return;
     if (countedRef.current.has(article.id)) return;
     countedRef.current.add(article.id);
-    incrementArticleViews(article.id);
+    incrementArticleViews(article.id).catch(() => {});
   }, [article]);
 
   if (fetching) {

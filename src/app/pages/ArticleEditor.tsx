@@ -66,6 +66,7 @@ export function ArticleEditor({ article, onClose, onSaved }: ArticleEditorProps)
       if (!d.title && !(Array.isArray(d.bodyParagraphs) && d.bodyParagraphs.some((p: string) => p.trim()))) return;
       setTitle(d.title || '');
       setSlug(d.slug || '');
+      setSlugTouched(!!d.slugTouched);
       setExcerpt(d.excerpt || '');
       setBodyParagraphs(Array.isArray(d.bodyParagraphs) ? d.bodyParagraphs : []);
       setImageUrl(d.imageUrl || '');
@@ -91,14 +92,14 @@ export function ArticleEditor({ article, onClose, onSaved }: ArticleEditorProps)
         localStorage.setItem(DRAFT_KEY, JSON.stringify({
           title, slug, excerpt, bodyParagraphs, imageUrl,
           categoryId, subcategoryId, authorId, readTime,
-          readTimeManuallySet, published, featured,
+          readTimeManuallySet, slugTouched, published, featured,
           publishDate: publishDate ? publishDate.toISOString() : null,
         }));
         setDraftSavedAt(new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }));
       } catch { /* storage unavailable */ }
     }, 2000);
     return () => clearTimeout(timer);
-  }, [title, slug, excerpt, bodyParagraphs, imageUrl, categoryId, subcategoryId, authorId, readTime, readTimeManuallySet, published, featured, publishDate, isEdit]);
+  }, [title, slug, excerpt, bodyParagraphs, imageUrl, categoryId, subcategoryId, authorId, readTime, readTimeManuallySet, slugTouched, published, featured, publishDate, isEdit]);
 
   useEffect(() => {
     if (!slugTouched && !isEdit) setSlug(slugify(title));
