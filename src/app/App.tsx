@@ -639,15 +639,21 @@ export default function App({ user, onLogout, onGoToLogin, showSignInPrompt, onD
 
                       {articles.length > 0 ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                          {mappedArticles.map(article => (
-                            <ArticleCard
+                          {mappedArticles.map((article, index) => (
+                            <motion.div
                               key={article.id}
-                              article={article}
-                              onClick={handleArticleClick}
-                              saved={savedIds.has(article.id)}
-                              onToggleSave={handleToggleSave}
-                              onAuthorClick={handleAuthorClick}
-                            />
+                              initial={{ opacity: 0, y: 20 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ duration: 0.35, delay: Math.min(index * 0.05, 0.5), ease: 'easeOut' }}
+                            >
+                              <ArticleCard
+                                article={article}
+                                onClick={handleArticleClick}
+                                saved={savedIds.has(article.id)}
+                                onToggleSave={handleToggleSave}
+                                onAuthorClick={handleAuthorClick}
+                              />
+                            </motion.div>
                           ))}
                         </div>
                       ) : (

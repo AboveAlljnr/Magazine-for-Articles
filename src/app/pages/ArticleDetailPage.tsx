@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft, Clock, Bookmark, BookmarkCheck, Share2, Facebook, Link } from 'lucide-react';
+import { ArrowLeft, Clock, Bookmark, BookmarkCheck, Share2, Facebook, Link, List } from 'lucide-react';
 import { motion } from 'motion/react';
 import { CommentsSection } from '../components/CommentsSection';
 import { Avatar } from '../components/Avatar';
@@ -32,11 +32,16 @@ export function ArticleDetailPage({
   const [scrolled, setScrolled] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [progress, setProgress] = useState(0);
 
   useEffect(() => {
     window.scrollTo(0, 0);
-    const handleScroll = () => setScrolled(window.scrollY > 80);
-    window.addEventListener('scroll', handleScroll);
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 80);
+      const max = document.documentElement.scrollHeight - window.innerHeight;
+      setProgress(max > 0 ? Math.min(1, window.scrollY / max) : 0);
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, [article.id]);
 
@@ -68,6 +73,19 @@ export function ArticleDetailPage({
     return encodeURIComponent(window.location.href);
   }
 
+  function scrollToParagraph(id: string) {
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  const toc = article.body
+    .map((paragraph, i) => {
+      const words = paragraph.trim().split(/\s+/).filter(Boolean);
+      const label = words.slice(0, 6).join(' ') + (words.length > 6 ? '…' : '');
+      return { id: `para-${i}`, label };
+    })
+    .filter(entry => entry.label.length > 0)
+    .slice(1);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
@@ -76,6 +94,14 @@ export function ArticleDetailPage({
       transition={{ duration: 0.25, ease: 'easeOut' }}
       className="min-h-screen bg-background"
     >
+      {/* Reading progress bar */}
+      <div className="fixed top-0 left-0 right-0 z-50 h-0.5 bg-muted pointer-events-none">
+        <div
+          className="h-full bg-primary transition-[width] duration-150 ease-out"
+          style={{ width: `${progress * 100}%` }}
+        />
+      </div>
+
       {/* Sticky mini-header */}
       <div
         className={`fixed top-0 left-0 right-0 z-40 bg-background/95 backdrop-blur-sm border-b border-border transition-all duration-300 ${
@@ -188,19 +214,45 @@ export function ArticleDetailPage({
           <img src={article.image} alt={article.title} className="w-full h-full object-cover" />
         </div>
 
+        {/* Table of contents */}
+        {toc.length >= 3 && (
+          <details className="mb-12 rounded-xl border border-border bg-muted/40 group">
+            <summary className="flex items-center justify-between px-5 py-3.5 cursor-pointer text-sm font-medium text-foreground select-none">
+              <span className="flex items-center gap-2">
+                <List className="w-4 h-4 text-primary" />Contents
+              </span>
+              <span className="text-muted-foreground text-xs group-open:hidden">Show</span>
+            </summary>
+            <nav className="px-5 pb-4 pt-1">
+              <ol className="space-y-2.5">
+                {toc.map(entry => (
+                  <li key={entry.id}>
+                    <button
+                      onClick={() => scrollToParagraph(entry.id)}
+                      className="text-sm text-muted-foreground hover:text-primary transition-colors text-left leading-snug"
+                    >
+                      {entry.label}
+                    </button>
+                  </li>
+                ))}
+              </ol>
+            </nav>
+          </details>
+        )}
+
         {/* Body */}
         <div className="space-y-7">
           {article.body.map((paragraph, i) => {
             const isPullQuote = i === 2 && paragraph.length < 300;
             if (isPullQuote) {
               return (
-                <blockquote key={i} className="my-10 border-l-4 border-primary pl-6 py-2 text-xl leading-relaxed text-foreground italic">
+                <blockquote key={i} id={`para-${i}`} className="my-10 border-l-4 border-primary pl-6 py-2 text-xl leading-relaxed text-foreground italic">
                   {paragraph}
                 </blockquote>
               );
             }
             return (
-              <p key={i} className="text-[1.05rem] leading-[1.85] text-foreground/90">{paragraph}</p>
+              <p key={i} id={`para-${i}`} className="text-[1.05rem] leading-[1.85] text-foreground/90">{paragraph}</p>
             );
           })}
         </div>
