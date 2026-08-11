@@ -365,6 +365,21 @@ export async function subscribeToNewsletter(email: string) {
   if (error && error.code !== '23505') throw error; // 23505 = already subscribed
 }
 
+export async function sendNewsletter() {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error('Not signed in');
+  const res = await fetch('/api/send-newsletter', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${session.access_token}`,
+    },
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(body?.error || 'Failed to send newsletter');
+  return body;
+}
+
 /* ── Search ───────────────────────────────────────────────────────── */
 
 export async function searchArticles(query: string) {

@@ -23,9 +23,22 @@ Create a `.env` file in the project root with the following variables:
 
 Set the following Environment Variables in Vercel (Project → Settings → Environment Variables):
 
-- `VITE_SUPABASE_URL`
-- `VITE_SUPABASE_ANON_KEY`
-- `RESEND_API_KEY` — used server-side by the newsletter function. Never expose this in `VITE_`-prefixed variables.
+| Variable | Notes |
+| --- | --- |
+| `VITE_SUPABASE_URL` | Used by both the client and serverless functions |
+| `VITE_SUPABASE_ANON_KEY` | Public anon key |
+| `SUPABASE_SERVICE_ROLE_KEY` | Server-only. From Supabase → Project Settings → API → service_role. Used by the newsletter function to read subscribers. |
+| `RESEND_API_KEY` | From https://resend.com/api-keys. Used by the newsletter function. |
+| `SITE_URL` | Your deployed domain, e.g. `https://ubuntu-essence.vercel.app`. Used for RSS links and newsletter links. |
+
+Never expose `SUPABASE_SERVICE_ROLE_KEY` or `RESEND_API_KEY` in `VITE_`-prefixed variables — they would leak into the browser bundle.
+
+### Serverless functions
+
+- `api/feed.xml.ts` — generates the RSS feed at `/feed.xml` (also aliased via `vercel.json`).
+- `api/send-newsletter.ts` — sends a newsletter to all subscribers. Only a signed-in admin can trigger it. Called from Admin → Subscribers → "Send newsletter".
+
+Note: Resend's default `onboarding@resend.dev` sender only delivers to the account owner's email. To send to all subscribers, verify a domain in Resend (Add a domain → DNS records) and update the `from` address in `api/send-newsletter.ts`.
 
 ### Supabase setup
 

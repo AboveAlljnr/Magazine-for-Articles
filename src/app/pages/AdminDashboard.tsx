@@ -7,7 +7,7 @@ import {
   ArrowLeft, LayoutDashboard, FileText, Users, Tag, Mail,
   Search, ChevronUp, ChevronDown, Star, StarOff, Send, Menu, X, Trash2, Plus, Pencil, Copy, MessageSquare, PenLine,
 } from 'lucide-react';
-import { updateArticle, deleteArticle, cloneArticle, getNewsletterSubscribers } from '../../lib/api';
+import { updateArticle, deleteArticle, cloneArticle, getNewsletterSubscribers, sendNewsletter } from '../../lib/api';
 import type { NewsletterSubscriber } from '../../lib/types';
 import { ArticleEditor } from './ArticleEditor';
 import { AdminCategories } from './AdminCategories';
@@ -411,7 +411,8 @@ function ArticlesTable({ articles, onRefresh, onEdit }: { articles: any[]; onRef
 function SubscribersSection() {
   const [subscribers, setSubscribers] = useState<NewsletterSubscriber[]>([]);
   const [loading, setLoading] = useState(true);
-  const [sent, setSent] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [sendResult, setSendResult] = useState<{ ok: boolean; message: string } | null>(null);
   const [query, setQuery] = useState('');
 
   useEffect(() => {
@@ -426,6 +427,19 @@ function SubscribersSection() {
     return !q || sub.email.toLowerCase().includes(q);
   });
 
+  async function handleSend() {
+    setSending(true);
+    setSendResult(null);
+    try {
+      const result = await sendNewsletter();
+      setSendResult({ ok: true, message: result?.message || `Newsletter sent to ${result?.sent ?? 0} subscriber(s)!` });
+    } catch (e: any) {
+      setSendResult({ ok: false, message: e?.message || 'Something went wrong.' });
+    }
+    setSending(false);
+    setTimeout(() => setSendResult(null), 5000);
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -436,13 +450,20 @@ function SubscribersSection() {
           </p>
         </div>
         <button
-          onClick={() => { setSent(true); setTimeout(() => setSent(false), 3000); }}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm hover:opacity-90 transition-opacity"
+          onClick={handleSend}
+          disabled={sending || subscribers.length === 0}
+          className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm hover:opacity-90 transition-opacity disabled:opacity-50"
         >
           <Send className="w-3.5 h-3.5" />
-          {sent ? 'Newsletter sent!' : 'Send newsletter'}
+          {sending ? 'Sending…' : 'Send newsletter'}
         </button>
       </div>
+
+      {sendResult && (
+        <p className={`text-sm ${sendResult.ok ? 'text-primary' : 'text-destructive'}`}>
+          {sendResult.message}
+        </p>
+      )}
 
       <div className="relative max-w-xs">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
