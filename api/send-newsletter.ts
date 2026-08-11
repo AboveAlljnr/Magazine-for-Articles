@@ -58,7 +58,7 @@ export default async function handler(req: any, res: any) {
       return;
     }
 
-    const siteUrl = (process.env.SITE_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '')) || 'https://ubuntu-essence.vercel.app';
+    const siteUrl = ((process.env.SITE_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '')) || 'https://magazine-for-articles.vercel.app').replace(/\/+$/, '');
 
     const storiesHtml = (articles || []).map((a: any) => `
       <tr>

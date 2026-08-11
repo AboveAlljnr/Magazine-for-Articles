@@ -24,7 +24,7 @@ export default async function handler(req: any, res: any) {
       .limit(20);
     if (error) throw error;
 
-    const siteUrl = (process.env.SITE_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '')) || 'https://ubuntu-essence.vercel.app';
+    const siteUrl = ((process.env.SITE_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '')) || 'https://magazine-for-articles.vercel.app').replace(/\/+$/, '');
 
     const items = (data || []).map((article: any) => {
       const link = `${siteUrl}/articles/${article.slug}`;
