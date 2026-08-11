@@ -16,15 +16,6 @@ import { AdminComments } from './AdminComments';
 import { AdminNotes } from './AdminNotes';
 
 
-const monthlyReaders = [
-  { month: 'Jun', readers: 3200 }, { month: 'Jul', readers: 4100 },
-  { month: 'Aug', readers: 3800 }, { month: 'Sep', readers: 5200 },
-  { month: 'Oct', readers: 6100 }, { month: 'Nov', readers: 5700 },
-  { month: 'Dec', readers: 7400 }, { month: 'Jan', readers: 6900 },
-  { month: 'Feb', readers: 8200 }, { month: 'Mar', readers: 9100 },
-  { month: 'Apr', readers: 8700 }, { month: 'May', readers: 11300 },
-];
-
 const PIE_COLORS = ['#b8652f', '#d4a574', '#8b3a1a', '#e07a3f', '#cc7722', '#a0522d'];
 
 
@@ -51,6 +42,27 @@ function getUniqueAuthors(articles: any[]) {
   return map;
 }
 
+function getPublishedByMonth(articles: any[], months = 6) {
+  const now = new Date();
+  const buckets: { month: string; count: number }[] = [];
+  for (let i = months - 1; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    buckets.push({ month: d.toLocaleDateString('en-US', { month: 'short' }), count: 0 });
+  }
+  articles.forEach((a: any) => {
+    if (!a.published_at) return;
+    const d = new Date(a.published_at);
+    const label = d.toLocaleDateString('en-US', { month: 'short' });
+    const bucket = buckets.find((b, idx) => {
+      const start = new Date(now.getFullYear(), now.getMonth() - (months - 1) + idx, 1);
+      const end = new Date(now.getFullYear(), now.getMonth() - (months - 1) + idx + 1, 0);
+      return d >= start && d <= end;
+    });
+    if (bucket) bucket.count += 1;
+  });
+  return buckets;
+}
+
 
 function StatCard({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
   return (
@@ -67,21 +79,27 @@ function Overview({ savedCount, articles }: { savedCount: number; articles: any[
   const categoryData = getCategoryData(articles);
   const uniqueAuthors = Object.keys(getUniqueAuthors(articles));
   const publishedCount = articles.filter((a: any) => a.published).length;
+  const publishedByMonth = getPublishedByMonth(articles);
+  const [subscriberCount, setSubscriberCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    getNewsletterSubscribers().then((subs) => setSubscriberCount(subs.length)).catch(() => setSubscriberCount(0));
+  }, []);
 
   return (
     <div className="space-y-8">
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard label="Total Articles" value={articles.length} sub={`${publishedCount} published`} />
         <StatCard label="Contributors" value={uniqueAuthors.length} sub="unique authors" />
-        <StatCard label="Bookmarked" value={savedCount} sub="by readers" />
-        <StatCard label="Subscribers" value="1,247" sub="+12% this month" />
+        <StatCard label="Bookmarked" value={savedCount} sub="in your reading list" />
+        <StatCard label="Subscribers" value={subscriberCount ?? '…'} sub="newsletter signups" />
       </div>
 
       <div className="grid lg:grid-cols-2 gap-6">
         <div className="bg-card border border-border rounded-xl p-6">
-          <h3 className="text-base text-foreground mb-6">Monthly Readership</h3>
+          <h3 className="text-base text-foreground mb-6">Articles Published by Month</h3>
           <ResponsiveContainer width="100%" height={220}>
-            <AreaChart data={monthlyReaders}>
+            <AreaChart data={publishedByMonth}>
               <defs>
                 <linearGradient id="readerGrad" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#b8652f" stopOpacity={0.25} />
@@ -90,9 +108,9 @@ function Overview({ savedCount, articles }: { savedCount: number; articles: any[
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(184,101,47,0.1)" />
               <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#6b5346' }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 11, fill: '#6b5346' }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 11, fill: '#6b5346' }} axisLine={false} tickLine={false} allowDecimals={false} />
               <Tooltip contentStyle={{ background: '#fdfaf6', border: '1px solid rgba(184,101,47,0.2)', borderRadius: 8, fontSize: 12 }} labelStyle={{ color: '#2d1810' }} />
-              <Area type="monotone" dataKey="readers" stroke="#b8652f" strokeWidth={2} fill="url(#readerGrad)" />
+              <Area type="monotone" dataKey="count" stroke="#b8652f" strokeWidth={2} fill="url(#readerGrad)" />
             </AreaChart>
           </ResponsiveContainer>
         </div>
