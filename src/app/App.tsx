@@ -94,8 +94,20 @@ function ArticlePageWrapper({
 
   if (fetching) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-background animate-pulse">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 pt-8 pb-20">
+          <div className="h-4 w-24 bg-muted rounded mb-10" />
+          <div className="h-3 w-32 bg-muted rounded mb-5" />
+          <div className="h-10 w-3/4 bg-muted rounded mb-6" />
+          <div className="h-5 w-full bg-muted rounded mb-2" />
+          <div className="h-5 w-5/6 bg-muted rounded mb-8" />
+          <div className="aspect-[16/9] bg-muted rounded-xl mb-12" />
+          <div className="space-y-4">
+            <div className="h-4 w-full bg-muted rounded" />
+            <div className="h-4 w-full bg-muted rounded" />
+            <div className="h-4 w-2/3 bg-muted rounded" />
+          </div>
+        </div>
       </div>
     );
   }
@@ -608,8 +620,22 @@ export default function App({ user, onLogout, onGoToLogin, showSignInPrompt, onD
               {/* Main content */}
               <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
                 {loading ? (
-                  <div className="flex justify-center py-24">
-                    <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8" aria-label="Loading stories">
+                    {Array.from({ length: 6 }).map((_, i) => (
+                      <div key={i} className="animate-pulse">
+                        <div className="aspect-[4/3] rounded-lg bg-muted mb-4" />
+                        <div className="space-y-2.5">
+                          <div className="h-3 w-24 bg-muted rounded" />
+                          <div className="h-5 w-3/4 bg-muted rounded" />
+                          <div className="h-4 w-full bg-muted rounded" />
+                          <div className="h-4 w-2/3 bg-muted rounded" />
+                          <div className="flex items-center gap-3 pt-2">
+                            <div className="w-7 h-7 rounded-full bg-muted" />
+                            <div className="h-3 w-24 bg-muted rounded" />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 ) : (
                   <>

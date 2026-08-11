@@ -120,8 +120,12 @@ function ArticlesTable({ articles, onRefresh, onEdit }: { articles: any[]; onRef
   const [sortKey, setSortKey] = useState<SortKey>('date');
   const [sortAsc, setSortAsc] = useState(false);
   const [togglingId, setTogglingId] = useState<number | null>(null);
-  const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<number | 'bulk' | null>(null);
   const [cloningId, setCloningId] = useState<number | null>(null);
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
+
+  useEffect(() => { setSelected(new Set()); }, [articles]);
 
   function toggleSort(key: SortKey) {
     if (sortKey === key) setSortAsc(!sortAsc);
@@ -185,17 +189,101 @@ function ArticlesTable({ articles, onRefresh, onEdit }: { articles: any[]; onRef
     finally { setCloningId(null); }
   }
 
+  function toggleAll() {
+    if (selected.size === filtered.length && filtered.length > 0) setSelected(new Set());
+    else setSelected(new Set(filtered.map(a => a.id)));
+  }
+
+  function toggleOne(id: number) {
+    setSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  async function handleBulkPublish(publish: boolean) {
+    const ids = [...selected];
+    setBulkBusy(true);
+    try {
+      await Promise.all(ids.map(id => updateArticle(id, {
+        published: publish,
+        published_at: publish ? new Date().toISOString() : undefined,
+      })));
+      onRefresh();
+      setSelected(new Set());
+    } catch (e) { console.error(e); }
+    finally { setBulkBusy(false); }
+  }
+
+  async function handleBulkDelete() {
+    const ids = [...selected];
+    setBulkBusy(true);
+    try {
+      await Promise.all(ids.map(id => deleteArticle(id)));
+      setDeleteConfirm(null);
+      onRefresh();
+      setSelected(new Set());
+    } catch (e) { console.error(e); }
+    finally { setBulkBusy(false); }
+  }
+
   return (
     <div className="space-y-4">
       {deleteConfirm !== null && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/20 backdrop-blur-sm">
           <div className="bg-card border border-border rounded-xl p-6 max-w-sm w-full mx-4 shadow-xl">
-            <h3 className="text-base text-foreground font-medium mb-2">Delete article?</h3>
+            <h3 className="text-base text-foreground font-medium mb-2">
+              {deleteConfirm === 'bulk' ? `Delete ${selected.size} article${selected.size !== 1 ? 's' : ''}?` : 'Delete article?'}
+            </h3>
             <p className="text-sm text-muted-foreground mb-5">This action cannot be undone.</p>
             <div className="flex gap-3 justify-end">
               <button onClick={() => setDeleteConfirm(null)} className="px-4 py-2 text-sm rounded-lg border border-border text-muted-foreground hover:text-foreground transition-colors">Cancel</button>
-              <button onClick={() => handleDelete(deleteConfirm)} className="px-4 py-2 text-sm rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors">Delete</button>
+              <button
+                onClick={() => deleteConfirm === 'bulk' ? handleBulkDelete() : handleDelete(deleteConfirm)}
+                disabled={bulkBusy}
+                className="px-4 py-2 text-sm rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors disabled:opacity-60"
+              >
+                {bulkBusy ? 'Deleting…' : 'Delete'}
+              </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {selected.size > 0 && (
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 bg-primary/5 border border-primary/20 rounded-xl">
+          <span className="text-sm text-foreground font-medium">{selected.size} selected</span>
+          <div className="flex items-center gap-2 ml-auto">
+            <button
+              onClick={() => handleBulkPublish(true)}
+              disabled={bulkBusy}
+              className="px-3 py-1.5 text-xs rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-60"
+            >
+              {bulkBusy ? '…' : 'Publish'}
+            </button>
+            <button
+              onClick={() => handleBulkPublish(false)}
+              disabled={bulkBusy}
+              className="px-3 py-1.5 text-xs rounded-lg border border-border text-muted-foreground hover:text-foreground transition-colors disabled:opacity-60"
+            >
+              {bulkBusy ? '…' : 'Unpublish'}
+            </button>
+            <button
+              onClick={() => setDeleteConfirm('bulk')}
+              disabled={bulkBusy}
+              className="px-3 py-1.5 text-xs rounded-lg border border-border text-red-600 hover:bg-red-50 hover:border-red-300 transition-colors disabled:opacity-60"
+            >
+              {bulkBusy ? '…' : 'Delete'}
+            </button>
+            <button
+              onClick={() => setSelected(new Set())}
+              disabled={bulkBusy}
+              className="px-3 py-1.5 text-xs rounded-lg text-muted-foreground hover:text-foreground transition-colors disabled:opacity-60"
+            >
+              Clear
+            </button>
           </div>
         </div>
       )}
@@ -219,6 +307,15 @@ function ArticlesTable({ articles, onRefresh, onEdit }: { articles: any[]; onRef
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-muted/30">
+                <th className="px-4 py-3 w-10">
+                  <input
+                    type="checkbox"
+                    checked={filtered.length > 0 && selected.size === filtered.length}
+                    onChange={toggleAll}
+                    aria-label="Select all articles"
+                    className="w-4 h-4 accent-primary cursor-pointer"
+                  />
+                </th>
                 <th className="text-left px-4 py-3 text-xs uppercase tracking-wide text-muted-foreground">Image</th>
                 {(['title', 'category', 'author', 'date'] as SortKey[]).map((k) => (
                   <th key={k} className="text-left px-4 py-3">
@@ -239,6 +336,15 @@ function ArticlesTable({ articles, onRefresh, onEdit }: { articles: any[]; onRef
             <tbody>
               {filtered.map((article, i) => (
                 <tr key={article.id} className={`border-b border-border last:border-0 hover:bg-muted/20 transition-colors ${i % 2 === 0 ? '' : 'bg-muted/10'}`}>
+                  <td className="px-4 py-3">
+                    <input
+                      type="checkbox"
+                      checked={selected.has(article.id)}
+                      onChange={() => toggleOne(article.id)}
+                      aria-label={`Select ${article.title}`}
+                      className="w-4 h-4 accent-primary cursor-pointer"
+                    />
+                  </td>
                   <td className="px-4 py-3">
                     {article.image_url ? (
                       <img src={article.image_url} alt="" className="w-10 h-10 rounded object-cover border border-border" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
@@ -305,6 +411,7 @@ function SubscribersSection() {
   const [subscribers, setSubscribers] = useState<NewsletterSubscriber[]>([]);
   const [loading, setLoading] = useState(true);
   const [sent, setSent] = useState(false);
+  const [query, setQuery] = useState('');
 
   useEffect(() => {
     getNewsletterSubscribers()
@@ -312,6 +419,11 @@ function SubscribersSection() {
       .catch(() => setSubscribers([]))
       .finally(() => setLoading(false));
   }, []);
+
+  const filtered = subscribers.filter(sub => {
+    const q = query.toLowerCase();
+    return !q || sub.email.toLowerCase().includes(q);
+  });
 
   return (
     <div className="space-y-6">
@@ -331,6 +443,17 @@ function SubscribersSection() {
         </button>
       </div>
 
+      <div className="relative max-w-xs">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <input
+          type="text"
+          placeholder="Search subscribers…"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          className="w-full pl-9 pr-4 py-2.5 rounded-lg border border-border bg-input-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+        />
+      </div>
+
       <div className="bg-card border border-border rounded-xl overflow-hidden">
         <table className="w-full text-sm">
           <thead>
@@ -342,10 +465,10 @@ function SubscribersSection() {
           <tbody>
             {loading ? (
               <tr><td colSpan={2} className="px-4 py-8 text-center text-sm text-muted-foreground">Loading subscribers…</td></tr>
-            ) : subscribers.length === 0 ? (
-              <tr><td colSpan={2} className="px-4 py-8 text-center text-sm text-muted-foreground">No subscribers yet.</td></tr>
+            ) : filtered.length === 0 ? (
+              <tr><td colSpan={2} className="px-4 py-8 text-center text-sm text-muted-foreground">{query ? 'No subscribers match your search.' : 'No subscribers yet.'}</td></tr>
             ) : (
-              subscribers.map((sub, i) => (
+              filtered.map((sub, i) => (
                 <tr key={sub.id} className={`border-b border-border last:border-0 hover:bg-muted/20 transition-colors ${i % 2 === 0 ? '' : 'bg-muted/10'}`}>
                   <td className="px-4 py-3 text-foreground">{sub.email}</td>
                   <td className="px-4 py-3 text-muted-foreground">
