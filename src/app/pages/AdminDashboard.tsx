@@ -5,7 +5,7 @@ import {
 } from 'recharts';
 import {
   ArrowLeft, LayoutDashboard, FileText, Users, Tag, Mail,
-  Search, ChevronUp, ChevronDown, Star, StarOff, Send, Menu, X, Trash2, Plus, Pencil, Copy, MessageSquare,
+  Search, ChevronUp, ChevronDown, Star, StarOff, Send, Menu, X, Trash2, Plus, Pencil, Copy, MessageSquare, PenLine,
 } from 'lucide-react';
 import { updateArticle, deleteArticle, cloneArticle, getNewsletterSubscribers } from '../../lib/api';
 import type { NewsletterSubscriber } from '../../lib/types';
@@ -13,6 +13,7 @@ import { ArticleEditor } from './ArticleEditor';
 import { AdminCategories } from './AdminCategories';
 import { AdminAuthors } from './AdminAuthors';
 import { AdminComments } from './AdminComments';
+import { AdminNotes } from './AdminNotes';
 
 
 const monthlyReaders = [
@@ -485,7 +486,7 @@ function SubscribersSection() {
 }
 
 
-type Section = 'overview' | 'articles' | 'authors' | 'categories' | 'subscribers' | 'comments';
+type Section = 'overview' | 'articles' | 'authors' | 'categories' | 'subscribers' | 'comments' | 'notes';
 
 interface AdminDashboardProps {
   onBack: () => void;
@@ -500,6 +501,7 @@ const navItems: { id: Section; label: string; icon: typeof LayoutDashboard }[] =
   { id: 'articles', label: 'Articles', icon: FileText },
   { id: 'authors', label: 'Authors', icon: Users },
   { id: 'categories', label: 'Categories', icon: Tag },
+  { id: 'notes', label: 'Notes', icon: PenLine },
   { id: 'subscribers', label: 'Subscribers', icon: Mail },
   { id: 'comments', label: 'Comments', icon: MessageSquare },
 ];
@@ -524,6 +526,7 @@ export function AdminDashboard({ onBack, savedCount, articles, loading, onRefres
     articles: authorFilter ? `Articles by ${authorFilter}` : 'All Articles',
     authors: 'Contributors',
     categories: 'Categories',
+    notes: 'Notes',
     subscribers: 'Subscribers',
     comments: 'Comments',
   };
@@ -592,6 +595,7 @@ export function AdminDashboard({ onBack, savedCount, articles, loading, onRefres
               {section === 'articles' && <ArticlesTable articles={filteredArticles} onRefresh={onRefresh} onEdit={(a) => setEditingArticle(a)} />}
               {section === 'authors' && <AdminAuthors />}
               {section === 'categories' && <AdminCategories />}
+              {section === 'notes' && <AdminNotes />}
               {section === 'subscribers' && <SubscribersSection />}
               {section === 'comments' && <AdminComments />}
             </>

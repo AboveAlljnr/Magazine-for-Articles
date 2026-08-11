@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { X, BookOpen, User, Bookmark, Home, LayoutDashboard, Image } from 'lucide-react';
+import { X, BookOpen, User, Bookmark, Home, LayoutDashboard, Image, PenLine } from 'lucide-react';
 
 import logoUrl from './logo.jpg';
 
@@ -12,6 +12,7 @@ interface MobileSidebarProps {
   onGoToReadingList?: () => void;
   onGoToAdmin?: () => void;
   onGoToGallery?: () => void;
+  onGoToNotes?: () => void;
   user?: { name: string; isAdmin?: boolean } | null;
   savedCount: number;
 }
@@ -24,6 +25,8 @@ export function MobileSidebar({
   onGoToProfile,
   onGoToReadingList,
   onGoToAdmin,
+  onGoToGallery,
+  onGoToNotes,
   user,
   savedCount,
 }: MobileSidebarProps) {
@@ -91,6 +94,14 @@ export function MobileSidebar({
           >
             <Image className="w-4 h-4 flex-shrink-0" />
             Gallery
+          </button>
+
+          <button
+            onClick={() => { onGoToNotes?.(); onClose(); }}
+            className="w-full flex items-center gap-3 px-6 py-3 text-sm text-foreground hover:bg-muted/50 transition-colors"
+          >
+            <PenLine className="w-4 h-4 flex-shrink-0" />
+            Notes
           </button>
 
           <div className="mt-2 mb-1 px-6">

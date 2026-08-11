@@ -13,6 +13,7 @@ import { MobileSidebar } from './components/MobileSidebar';
 import { ArticleDetailPage } from './pages/ArticleDetailPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { AuthorPage } from './pages/AuthorPage';
+import { NotesPage } from './pages/NotesPage';
 import { StaticPage } from './components/StaticPage';
 import { privacyPage, termsPage, cookiesPage, aboutPage, contactPage } from './lib/legal-content';
 import { applySeo, DEFAULT_TITLE } from './lib/seo';
@@ -502,6 +503,7 @@ export default function App({ user, onLogout, onGoToLogin, showSignInPrompt, onD
           onGoToReadingList={() => { setProfileTab('reading-list'); navigate('/profile'); }}
           onGoToAdmin={user?.isAdmin ? () => navigate('/admin') : undefined}
           onGoToGallery={() => navigate('/gallery')}
+          onGoToNotes={() => navigate('/notes')}
           user={user}
           savedCount={savedIds.size}
         />
@@ -590,6 +592,16 @@ export default function App({ user, onLogout, onGoToLogin, showSignInPrompt, onD
                         aria-label="Toggle dark mode"
                       >
                         {darkMode ? <Sun className="w-5 h-5 text-foreground" /> : <Moon className="w-5 h-5 text-foreground" />}
+                      </button>
+
+                      <button
+                        className="flex items-center gap-1 px-3 py-1.5 text-sm text-muted-foreground hover:text-primary transition-colors"
+                        onClick={() => navigate('/notes')}
+                      >
+                        <span className="hidden sm:inline">Notes</span>
+                        <svg className="w-5 h-5 sm:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 10h8M8 14h5M7 4h10a2 2 0 012 2v14l-3-2-3 2-3-2-3 2V6a2 2 0 012-2z" />
+                        </svg>
                       </button>
 
                       <button
@@ -738,6 +750,7 @@ export default function App({ user, onLogout, onGoToLogin, showSignInPrompt, onD
                           </li>
                         ))}
                         <li><button onClick={() => navigate('/gallery')} className="hover:text-primary transition-colors">Gallery</button></li>
+                        <li><button onClick={() => navigate('/notes')} className="hover:text-primary transition-colors">Notes</button></li>
                       </ul>
                     </div>
                     <div>
@@ -810,6 +823,16 @@ export default function App({ user, onLogout, onGoToLogin, showSignInPrompt, onD
                 />
               </motion.div>
             </Suspense>
+          }
+        />
+
+        {/* ── Notes ── */}
+        <Route
+          path="/notes"
+          element={
+            <motion.div key="notes" {...PT}>
+              <NotesPage onBack={() => navigate('/')} />
+            </motion.div>
           }
         />
 

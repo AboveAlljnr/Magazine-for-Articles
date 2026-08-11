@@ -316,6 +316,46 @@ export async function adminDeleteComment(id: number) {
   if (error) throw error;
 }
 
+/* ── Notes ───────────────────────────────────────────────────────── */
+
+export async function getNotes() {
+  const { data, error } = await supabase
+    .from('notes')
+    .select('*')
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return data as any[];
+}
+
+export async function createNote(note: { body: string; video_url?: string | null }) {
+  const { data, error } = await supabase
+    .from('notes')
+    .insert({ body: note.body, video_url: note.video_url || null })
+    .select()
+    .single();
+  if (error) throw error;
+  return data as any;
+}
+
+export async function updateNote(id: number, updates: Partial<{ body: string; video_url: string | null }>) {
+  const { data, error } = await supabase
+    .from('notes')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .single();
+  if (error) throw error;
+  return data as any;
+}
+
+export async function deleteNote(id: number) {
+  const { error } = await supabase
+    .from('notes')
+    .delete()
+    .eq('id', id);
+  if (error) throw error;
+}
+
 /* ── Newsletter ──────────────────────────────────────────────────── */
 
 export async function subscribeToNewsletter(email: string) {
