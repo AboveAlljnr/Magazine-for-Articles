@@ -21,6 +21,7 @@ import logoUrl from './components/logo.jpg';
 import {
   getArticles, getCategories, getAllSubcategories, getBookmarks,
   addBookmark, removeBookmark, subscribeToNewsletter, getAllArticles, getArticleBySlug,
+  incrementArticleViews,
 } from '../lib/api';
 
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard').then(m => ({ default: m.AdminDashboard })));
@@ -64,6 +65,7 @@ export function toComponentArticle(row: any): MappedArticle {
     date: formatDate(row.published_at),
     readTime: `${row.read_time_minutes} min read`,
     featured: row.featured,
+    views: row.views || 0,
   };
 }
 
@@ -85,6 +87,7 @@ function ArticlePageWrapper({
   const navigate = useNavigate();
   const [article, setArticle] = useState<MappedArticle | null>(null);
   const [fetching, setFetching] = useState(true);
+  const countedRef = useRef<Set<number>>(new Set());
 
   useEffect(() => {
     if (!slug) { navigate('/'); return; }
@@ -100,6 +103,14 @@ function ArticlePageWrapper({
         .finally(() => setFetching(false));
     }
   }, [slug]);
+
+  // Best-effort view counter: once per article per session
+  useEffect(() => {
+    if (!article) return;
+    if (countedRef.current.has(article.id)) return;
+    countedRef.current.add(article.id);
+    incrementArticleViews(article.id);
+  }, [article]);
 
   if (fetching) {
     return (

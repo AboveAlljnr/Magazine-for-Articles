@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft, Clock, Bookmark, BookmarkCheck, Share2, Facebook, Link, List } from 'lucide-react';
+import { ArrowLeft, Clock, Bookmark, BookmarkCheck, Share2, Facebook, Link, List, Eye } from 'lucide-react';
 import { motion } from 'motion/react';
 import { CommentsSection } from '../components/CommentsSection';
 import { Avatar } from '../components/Avatar';
@@ -16,6 +16,12 @@ interface ArticleDetailPageProps {
   onAuthorClick: (name: string) => void;
   userName?: string;
   userId?: string;
+}
+
+function formatViews(count: number): string {
+  if (count >= 1_000_000) return `${(count / 1_000_000).toFixed(1).replace(/\.0$/, '')}M`;
+  if (count >= 1_000) return `${(count / 1_000).toFixed(1).replace(/\.0$/, '')}k`;
+  return `${count}`;
 }
 
 export function ArticleDetailPage({
@@ -163,6 +169,12 @@ export function ArticleDetailPage({
                 <span>{article.date}</span>
                 <span>·</span>
                 <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{article.readTime}</span>
+                {article.views > 0 && (
+                  <>
+                    <span>·</span>
+                    <span className="flex items-center gap-1"><Eye className="w-3 h-3" />{formatViews(article.views)}</span>
+                  </>
+                )}
               </div>
             </div>
           </div>

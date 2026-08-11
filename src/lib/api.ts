@@ -177,6 +177,12 @@ export async function getArticleById(id: number) {
   return data as any;
 }
 
+export async function incrementArticleViews(articleId: number) {
+  const { error } = await supabase
+    .rpc('increment_article_views', { article_id: articleId });
+  if (error) console.error('Failed to increment views', error);
+}
+
 /* ── Authors ──────────────────────────────────────────────────────── */
 
 export async function getAuthors() {

@@ -14,4 +14,5 @@ export interface MappedArticle {
   date: string;
   readTime: string;
   featured: boolean;
+  views: number;
 }
