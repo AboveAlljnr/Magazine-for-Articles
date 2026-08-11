@@ -23,6 +23,10 @@ export function ArticleEditor({ article, onClose, onSaved }: ArticleEditorProps)
   const isEdit = !!article;
   const articleId = article?.id;
 
+  const DRAFT_KEY = 'ubuntu-essence:draft';
+  const [draftSavedAt, setDraftSavedAt] = useState<string | null>(null);
+  const [draftRestored, setDraftRestored] = useState(false);
+
   const [title, setTitle] = useState(article?.title || '');
   const [slug, setSlug] = useState(article?.slug || '');
   const [excerpt, setExcerpt] = useState(article?.excerpt || '');
@@ -51,6 +55,51 @@ export function ArticleEditor({ article, onClose, onSaved }: ArticleEditorProps)
   const [authors, setAuthors] = useState<Author[]>([]);
 
   const [slugTouched, setSlugTouched] = useState(false);
+
+  // Restore autosaved draft when creating a new article
+  useEffect(() => {
+    if (isEdit) return;
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (!raw) return;
+      const d = JSON.parse(raw);
+      if (!d.title && !(Array.isArray(d.bodyParagraphs) && d.bodyParagraphs.some((p: string) => p.trim()))) return;
+      setTitle(d.title || '');
+      setSlug(d.slug || '');
+      setExcerpt(d.excerpt || '');
+      setBodyParagraphs(Array.isArray(d.bodyParagraphs) ? d.bodyParagraphs : []);
+      setImageUrl(d.imageUrl || '');
+      setCategoryId(d.categoryId || 0);
+      setSubcategoryId(d.subcategoryId || null);
+      setAuthorId(d.authorId || 0);
+      setReadTime(d.readTime || 5);
+      setReadTimeManuallySet(!!d.readTimeManuallySet);
+      setPublished(!!d.published);
+      setFeatured(!!d.featured);
+      if (d.publishDate) setPublishDate(new Date(d.publishDate));
+      setDraftRestored(true);
+    } catch { /* ignore corrupt draft */ }
+  }, []);
+
+  // Debounced autosave for new articles
+  useEffect(() => {
+    if (isEdit) return;
+    const hasContent = title.trim() || bodyParagraphs.some(p => p.trim());
+    if (!hasContent) return;
+    const timer = setTimeout(() => {
+      try {
+        localStorage.setItem(DRAFT_KEY, JSON.stringify({
+          title, slug, excerpt, bodyParagraphs, imageUrl,
+          categoryId, subcategoryId, authorId, readTime,
+          readTimeManuallySet, published, featured,
+          publishDate: publishDate ? publishDate.toISOString() : null,
+        }));
+        setDraftSavedAt(new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }));
+      } catch { /* storage unavailable */ }
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [title, slug, excerpt, bodyParagraphs, imageUrl, categoryId, subcategoryId, authorId, readTime, readTimeManuallySet, published, featured, publishDate, isEdit]);
+
   useEffect(() => {
     if (!slugTouched && !isEdit) setSlug(slugify(title));
   }, [title, slugTouched, isEdit]);
@@ -125,6 +174,7 @@ export function ArticleEditor({ article, onClose, onSaved }: ArticleEditorProps)
           }
         }
       }
+      localStorage.removeItem(DRAFT_KEY);
       onSaved();
     } catch (e) {
       console.error('Save failed', e);
@@ -164,7 +214,7 @@ export function ArticleEditor({ article, onClose, onSaved }: ArticleEditorProps)
           article_id: articleId || 0,
           image_url: publicUrl,
           caption: '',
-          alt_text: '',
+          alt_text: title.trim() || 'Article image',
           sort_order: galleryImages.length + 1,
           created_at: new Date().toISOString(),
         };
@@ -177,7 +227,7 @@ export function ArticleEditor({ article, onClose, onSaved }: ArticleEditorProps)
             article_id: articleId,
             image_url: publicUrl,
             caption: '',
-            alt_text: '',
+            alt_text: title.trim() || 'Article image',
             sort_order: galleryImages.length + 1,
           }).catch(console.error);
         }
@@ -401,7 +451,13 @@ export function ArticleEditor({ article, onClose, onSaved }: ArticleEditorProps)
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-border">
+        <div className="flex items-center gap-3 px-6 py-4 border-t border-border">
+          {!isEdit && (draftSavedAt || draftRestored) && (
+            <span className="mr-auto text-xs text-muted-foreground flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+              {draftSavedAt ? `Draft saved ${draftSavedAt}` : 'Draft restored from earlier session'}
+            </span>
+          )}
           <button onClick={onClose} className="px-4 py-2 text-sm rounded-lg border border-border text-muted-foreground hover:text-foreground transition-colors">Cancel</button>
           <button onClick={() => setPreviewOpen(true)} className="px-4 py-2 text-sm rounded-lg border border-border text-foreground hover:bg-muted transition-colors flex items-center gap-1.5">
             <Eye className="w-4 h-4" />Preview

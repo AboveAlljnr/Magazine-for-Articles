@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, lazy, Suspense } from 'react';
 import { Routes, Route, useNavigate, useParams, useLocation, Navigate } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -13,8 +13,6 @@ import { MobileSidebar } from './components/MobileSidebar';
 import { ArticleDetailPage } from './pages/ArticleDetailPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { AuthorPage } from './pages/AuthorPage';
-import { AdminDashboard } from './pages/AdminDashboard';
-import { GalleryPage } from './pages/GalleryPage';
 import { StaticPage } from './components/StaticPage';
 import { privacyPage, termsPage, cookiesPage, aboutPage, contactPage } from './lib/legal-content';
 import { applySeo, DEFAULT_TITLE } from './lib/seo';
@@ -24,6 +22,17 @@ import {
   getArticles, getCategories, getAllSubcategories, getBookmarks,
   addBookmark, removeBookmark, subscribeToNewsletter, getAllArticles, getArticleBySlug,
 } from '../lib/api';
+
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard').then(m => ({ default: m.AdminDashboard })));
+const GalleryPage = lazy(() => import('./pages/GalleryPage').then(m => ({ default: m.GalleryPage })));
+
+function LazyLoader() {
+  return (
+    <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
+}
 
 const PT = {
   initial: { opacity: 0, y: 12 },
@@ -778,16 +787,18 @@ export default function App({ user, onLogout, onGoToLogin, showSignInPrompt, onD
         <Route
           path="/gallery"
           element={
-            <motion.div key="gallery" {...PT}>
-              <GalleryPage
-                onBack={() => navigate('/')}
-                onImageClick={slug => {
-                  const article = mappedArticles.find(a => a.slug === slug);
-                  if (article) navigate(`/articles/${article.slug}`);
-                  else navigate('/');
-                }}
-              />
-            </motion.div>
+            <Suspense fallback={<LazyLoader />}>
+              <motion.div key="gallery" {...PT}>
+                <GalleryPage
+                  onBack={() => navigate('/')}
+                  onImageClick={slug => {
+                    const article = mappedArticles.find(a => a.slug === slug);
+                    if (article) navigate(`/articles/${article.slug}`);
+                    else navigate('/');
+                  }}
+                />
+              </motion.div>
+            </Suspense>
           }
         />
 
@@ -809,7 +820,7 @@ export default function App({ user, onLogout, onGoToLogin, showSignInPrompt, onD
         />
 
         {/* ── Admin ── */}
-        <Route path="/admin" element={<AdminPageWrapper savedCount={savedIds.size} />} />
+        <Route path="/admin" element={<Suspense fallback={<LazyLoader />}><AdminPageWrapper savedCount={savedIds.size} /></Suspense>} />
 
         {/* ── Static pages ── */}
         <Route path="/privacy"  element={<motion.div key="privacy"  {...PT}><StaticPage title={privacyPage.title}  sections={privacyPage.sections}  onBack={() => navigate('/')} /></motion.div>} />

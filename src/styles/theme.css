@@ -80,6 +80,11 @@
   --sidebar-ring: #e8864a;
 }
 
+/* Soften bright images against the dark background */
+.dark img {
+  filter: brightness(0.95) contrast(1.02);
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
