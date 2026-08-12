@@ -9,13 +9,14 @@ export default async function handler(req: any, res: any) {
   }
 
   try {
+    const missing = ['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY', 'SUPABASE_SERVICE_ROLE_KEY', 'RESEND_API_KEY'].filter((k) => !process.env[k]);
+    if (missing.length) {
+      throw new Error(`Missing server environment variables: ${missing.join(', ')}`);
+    }
     const url = process.env.VITE_SUPABASE_URL || '';
     const anonKey = process.env.VITE_SUPABASE_ANON_KEY || '';
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
     const resendKey = process.env.RESEND_API_KEY || '';
-    if (!url || !anonKey || !serviceRoleKey || !resendKey) {
-      throw new Error('Missing server environment variables');
-    }
 
     // 1. Verify the caller is a signed-in admin
     const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
