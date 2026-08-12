@@ -5,6 +5,6 @@
   "installCommand": "npm install",
   "rewrites": [
     { "source": "/feed.xml", "destination": "/api/feed.xml" },
-    { "source": "/((?!api/).*)", "destination": "/" }
+    { "source": "/((?!api/|@)(?!.*\\.[^/]*$).*)", "destination": "/" }
   ]
 }
