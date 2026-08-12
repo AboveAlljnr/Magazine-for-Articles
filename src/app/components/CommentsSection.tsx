@@ -125,9 +125,10 @@ export function CommentsSection({ articleId, userName = 'Reader', userId }: Comm
 
   function renderComment(comment: CommentNode, depth: number) {
     const replyDraft = replyDrafts[comment.id] || '';
+    const cappedDepth = Math.min(depth, 2); // cap visual indent on mobile
     return (
-      <div key={comment.id} className={depth > 0 ? 'mt-4' : ''}>
-        <div className={`flex gap-3 ${depth > 0 ? 'pl-4 sm:pl-6 border-l-2 border-border/70 ml-2' : ''}`}>
+      <div key={comment.id} className={cappedDepth > 0 ? 'mt-4' : ''}>
+        <div className={`flex gap-3 ${cappedDepth > 0 ? 'pl-3 sm:pl-6 border-l-2 border-border/70 ml-1 sm:ml-2' : ''}`}>
           <div className="w-9 h-9 rounded-full bg-secondary flex items-center justify-center text-secondary-foreground text-sm font-medium flex-shrink-0">
             {(comment.profiles?.display_name || '?').charAt(0)}
           </div>

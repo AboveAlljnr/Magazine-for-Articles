@@ -72,7 +72,7 @@ export function FeaturedArticle({ article, onClick, saved, onToggleSave, onAutho
               name={article.author}
               src={article.authorAvatar}
               size="lg"
-              onClick={e => { (e as any).stopPropagation?.(); onAuthorClick(article.author); }}
+              onClick={e => { e.stopPropagation(); onAuthorClick(article.author); }}
             />
             <div>
               <button

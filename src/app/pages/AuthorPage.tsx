@@ -1,4 +1,4 @@
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, BookOpen } from 'lucide-react';
 import { ArticleCard } from '../components/ArticleCard';
 import { Avatar } from '../components/Avatar';
 import type { MappedArticle } from '../lib/article-types';

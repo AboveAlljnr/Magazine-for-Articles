@@ -58,7 +58,7 @@ export function GalleryPage({ onBack, onImageClick }: GalleryPageProps) {
             <p className="text-sm">No images yet.</p>
           </div>
         ) : (
-          <div className="columns-2 sm:columns-3 lg:columns-4 gap-4 space-y-4">
+          <div className="columns-1 min-[480px]:columns-2 sm:columns-3 lg:columns-4 gap-4 space-y-4">
             {images.map((img, i) => (
               <div
                 key={img.id}

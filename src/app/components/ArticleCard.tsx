@@ -66,7 +66,7 @@ export function ArticleCard({ article, onClick, saved, onToggleSave, onAuthorCli
             name={article.author}
             src={article.authorAvatar}
             size="xs"
-            onClick={e => { (e as any).stopPropagation?.(); onAuthorClick(article.author); }}
+            onClick={e => { e.stopPropagation(); onAuthorClick(article.author); }}
           />
           <div>
             <button

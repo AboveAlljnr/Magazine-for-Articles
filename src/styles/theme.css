@@ -193,3 +193,29 @@
     line-height: 1.5;
   }
 }
+
+/* ── Mobile utilities ────────────────────────────────────────────── */
+
+/* Hide scrollbar while keeping scroll functionality */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Safe-area insets for notched iPhones */
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.safe-top {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+/* Ensure interactive elements always hit the 44px minimum tap target */
+.tap-target {
+  min-height: 44px;
+  min-width: 44px;
+}
+

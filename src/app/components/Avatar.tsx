@@ -1,10 +1,10 @@
+import { MouseEvent } from 'react';
 import { optimizedImage } from '../../lib/image';
-
 interface AvatarProps {
   name: string;
   src?: string | null;
   size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
-  onClick?: () => void;
+  onClick?: (e: MouseEvent) => void;
   className?: string;
 }
 

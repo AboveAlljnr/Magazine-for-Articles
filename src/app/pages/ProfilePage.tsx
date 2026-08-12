@@ -103,26 +103,29 @@ export function ProfilePage({
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-1 border-b border-border mb-8">
-          {tabs.map(({ id, label, icon: Icon }) => (
-            <button
-              key={id}
-              onClick={() => setActiveTab(id)}
-              className={`flex items-center gap-2 px-4 py-3 text-sm transition-colors border-b-2 -mb-px ${
-                activeTab === id
-                  ? 'border-primary text-primary'
-                  : 'border-transparent text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              <Icon className="w-4 h-4" />
-              {label}
-              {id === 'reading-list' && savedArticles.length > 0 && (
-                <span className="bg-primary/10 text-primary text-xs rounded-full px-1.5 py-0.5 leading-none">
-                  {savedArticles.length}
-                </span>
-              )}
-            </button>
-          ))}
+        <div className="-mx-4 sm:mx-0">
+          <div className="flex overflow-x-auto scrollbar-hide border-b border-border mb-8 px-4 sm:px-0">
+            {tabs.map(({ id, label, icon: Icon }) => (
+              <button
+                key={id}
+                onClick={() => setActiveTab(id)}
+                className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-3 text-sm whitespace-nowrap flex-shrink-0 transition-colors border-b-2 -mb-px ${
+                  activeTab === id
+                    ? 'border-primary text-primary'
+                    : 'border-transparent text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <Icon className="w-4 h-4" />
+                <span className="hidden xs:inline sm:inline">{label}</span>
+                <span className="xs:hidden sm:hidden text-xs">{label}</span>
+                {id === 'reading-list' && savedArticles.length > 0 && (
+                  <span className="bg-primary/10 text-primary text-xs rounded-full px-1.5 py-0.5 leading-none">
+                    {savedArticles.length}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Tab content */}

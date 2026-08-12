@@ -150,12 +150,13 @@ export function ArticleDetailPage({
 
   const toc = article.body
     .map((paragraph, i) => {
-      const words = paragraph.trim().split(/\s+/).filter(Boolean);
-      const label = words.slice(0, 6).join(' ') + (words.length > 6 ? '…' : '');
-      return { id: `para-${i}`, label };
+      if (paragraph.startsWith('#')) {
+        const label = paragraph.replace(/^#+\s/, '');
+        return { id: `para-${i}`, label };
+      }
+      return null;
     })
-    .filter(entry => entry.label.length > 0)
-    .slice(1);
+    .filter(Boolean) as { id: string, label: string }[];
 
   return (
     <motion.div
@@ -263,7 +264,8 @@ export function ArticleDetailPage({
                 <Share2 className="w-4 h-4" />
               </button>
               {shareOpen && (
-                <div className="absolute right-0 top-full mt-2 w-40 bg-card border border-border rounded-xl shadow-lg py-1 z-50">
+                <div className="absolute right-0 top-full mt-2 w-40 bg-card border border-border rounded-xl shadow-lg py-1 z-50"
+                  style={{ right: 'auto', left: '50%', transform: 'translateX(-50%)', minWidth: '10rem' }}>
                   <button
                     onClick={() => openShare(`https://twitter.com/intent/tweet?text=${encodeURIComponent(article.title)}&url=${shareUrl()}`)}
                     className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-muted/50 transition-colors"
@@ -344,12 +346,25 @@ export function ArticleDetailPage({
         {/* Body */}
         <div className="space-y-7">
           {article.body.map((paragraph, i) => {
-            const isPullQuote = i === 2 && paragraph.length < 300;
-            if (isPullQuote) {
+            if (paragraph.startsWith('# ')) {
+              return <h2 key={i} id={`para-${i}`} className="text-3xl font-bold text-foreground mt-10 mb-4">{paragraph.replace(/^#\s/, '')}</h2>;
+            }
+            if (paragraph.startsWith('## ')) {
+              return <h3 key={i} id={`para-${i}`} className="text-2xl font-bold text-foreground mt-8 mb-3">{paragraph.replace(/^##\s/, '')}</h3>;
+            }
+            if (paragraph.startsWith('> ')) {
               return (
                 <blockquote key={i} id={`para-${i}`} className="my-10 border-l-4 border-primary pl-6 py-2 text-xl leading-relaxed text-foreground italic">
-                  {paragraph}
+                  {paragraph.replace(/^>\s/, '')}
                 </blockquote>
+              );
+            }
+            if (paragraph.startsWith('- ')) {
+              return (
+                <div key={i} id={`para-${i}`} className="flex gap-3 text-[1.05rem] leading-[1.85] text-foreground/90">
+                  <span className="text-primary mt-1">•</span>
+                  <span>{paragraph.replace(/^-\s/, '')}</span>
+                </div>
               );
             }
             return (

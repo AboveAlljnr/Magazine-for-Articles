@@ -18,7 +18,7 @@ export function CategoryNav({
   return (
     <div className="border-b border-border bg-muted/30">
       {/* Main categories */}
-      <nav className="overflow-x-auto">
+      <nav className="overflow-x-auto scrollbar-hide">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex gap-8 py-4">
             {categories.map((category) => (
@@ -40,7 +40,7 @@ export function CategoryNav({
 
       {/* Subcategory pills — visible only when a non-All category is active */}
       {subcategories && subcategories.length > 0 && (
-        <div className="overflow-x-auto border-t border-border/50 bg-background/60">
+        <div className="overflow-x-auto scrollbar-hide border-t border-border/50 bg-background/60">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex gap-3 py-3">
               <button
