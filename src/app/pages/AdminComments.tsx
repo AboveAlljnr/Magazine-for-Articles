@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Trash2 } from 'lucide-react';
-import { getAllComments, adminDeleteComment } from '../../lib/api';
+import { Trash2, Eye, EyeOff } from 'lucide-react';
+import { getAllComments, adminDeleteComment, updateCommentStatus } from '../../lib/api';
 
 export function AdminComments() {
   const [comments, setComments] = useState<any[]>([]);
@@ -18,6 +18,13 @@ export function AdminComments() {
     try {
       await adminDeleteComment(id);
       setDeleteId(null);
+      load();
+    } catch (e) { console.error(e); }
+  }
+
+  async function handleToggleStatus(comment: any) {
+    try {
+      await updateCommentStatus(comment.id, comment.status === 'hidden' ? 'approved' : 'hidden');
       load();
     } catch (e) { console.error(e); }
   }
@@ -61,17 +68,27 @@ export function AdminComments() {
                   {comment.parent_id && (
                     <span className="text-[10px] uppercase tracking-wider bg-muted text-muted-foreground px-1.5 py-0.5 rounded">reply</span>
                   )}
+                  {comment.status === 'hidden' && (
+                    <span className="text-[10px] uppercase tracking-wider bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-300 px-1.5 py-0.5 rounded">hidden</span>
+                  )}
                   <span className="text-xs text-muted-foreground">
                     {new Date(comment.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}
                   </span>
                   <span className="text-xs text-muted-foreground/60">on</span>
                   <span className="text-xs text-primary">{comment.articles?.title || 'Unknown article'}</span>
                 </div>
-                <p className="text-sm text-muted-foreground mt-1.5">{comment.body}</p>
+                <p className={`text-sm mt-1.5 ${comment.status === 'hidden' ? 'text-muted-foreground/60 line-through' : 'text-muted-foreground'}`}>{comment.body}</p>
                 <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
                   <span>{comment.likes_count} likes</span>
                 </div>
               </div>
+              <button
+                onClick={() => handleToggleStatus(comment)}
+                className={`p-1.5 transition-colors flex-shrink-0 ${comment.status === 'hidden' ? 'text-primary hover:text-foreground' : 'text-muted-foreground hover:text-primary'}`}
+                title={comment.status === 'hidden' ? 'Show comment' : 'Hide comment'}
+              >
+                {comment.status === 'hidden' ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
               <button
                 onClick={() => setDeleteId(comment.id)}
                 className="p-1.5 text-muted-foreground hover:text-red-500 transition-colors flex-shrink-0"

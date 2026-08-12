@@ -272,6 +272,7 @@ export async function getComments(articleId: number) {
       profiles!inner(display_name, avatar_url)
     `)
     .eq('article_id', articleId)
+    .eq('status', 'approved')
     .order('created_at', { ascending: true });
   if (error) throw error;
   return data as any[];
@@ -288,6 +289,36 @@ export async function addComment(articleId: number, userId: string, body: string
     .single();
   if (error) throw error;
   return data as any;
+}
+
+export async function updateComment(id: number, body: string) {
+  const { data, error } = await supabase
+    .from('comments')
+    .update({ body, updated_at: new Date().toISOString() })
+    .eq('id', id)
+    .select(`
+      *,
+      profiles!inner(display_name, avatar_url)
+    `)
+    .single();
+  if (error) throw error;
+  return data as any;
+}
+
+export async function deleteComment(id: number) {
+  const { error } = await supabase
+    .from('comments')
+    .delete()
+    .eq('id', id);
+  if (error) throw error;
+}
+
+export async function updateCommentStatus(id: number, status: 'approved' | 'hidden') {
+  const { error } = await supabase
+    .from('comments')
+    .update({ status, updated_at: new Date().toISOString() })
+    .eq('id', id);
+  if (error) throw error;
 }
 
 export async function likeComment(commentId: number) {

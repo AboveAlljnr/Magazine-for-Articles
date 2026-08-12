@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
-import { ThumbsUp, Send } from 'lucide-react';
-import { getComments as fetchComments, addComment, likeComment } from '../../lib/api';
+import { ThumbsUp, Send, Pencil, Trash2, Check, X } from 'lucide-react';
+import { getComments as fetchComments, addComment, likeComment, updateComment, deleteComment } from '../../lib/api';
 
 interface CommentItem {
   id: number;
+  user_id: string;
   body: string;
   likes_count: number;
   created_at: string;
@@ -53,6 +54,9 @@ export function CommentsSection({ articleId, userName = 'Reader', userId }: Comm
   const [posting, setPosting] = useState(false);
   const [replyPosting, setReplyPosting] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editDraft, setEditDraft] = useState('');
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
 
   useEffect(() => {
     fetchComments(articleId)
@@ -93,6 +97,30 @@ export function CommentsSection({ articleId, userName = 'Reader', userId }: Comm
     setReplyPosting(false);
   }
 
+  function startEdit(comment: CommentItem) {
+    setEditingId(comment.id);
+    setEditDraft(comment.body);
+  }
+
+  async function handleSaveEdit(commentId: number) {
+    const body = editDraft.trim();
+    if (!body) return;
+    try {
+      const updated = await updateComment(commentId, body);
+      setComments((prev) => prev.map((c) => (c.id === commentId ? updated as CommentItem : c)));
+      setEditingId(null);
+      setEditDraft('');
+    } catch {}
+  }
+
+  async function handleDelete(commentId: number) {
+    try {
+      await deleteComment(commentId);
+      setComments((prev) => prev.filter((c) => c.id !== commentId));
+      setConfirmDeleteId(null);
+    } catch {}
+  }
+
   const tree = buildTree(comments);
 
   function renderComment(comment: CommentNode, depth: number) {
@@ -110,7 +138,35 @@ export function CommentsSection({ articleId, userName = 'Reader', userId }: Comm
               </span>
               <span className="text-xs text-muted-foreground">{timeAgo(comment.created_at)}</span>
             </div>
-            <p className="text-sm text-foreground/85 leading-relaxed">{comment.body}</p>
+            {editingId === comment.id ? (
+              <div>
+                <textarea
+                  value={editDraft}
+                  onChange={(e) => setEditDraft(e.target.value)}
+                  rows={2}
+                  autoFocus
+                  className="w-full px-3 py-2 rounded-xl border border-border bg-input-background focus:outline-none focus:ring-2 focus:ring-primary text-foreground placeholder:text-muted-foreground/60 resize-none text-sm"
+                />
+                <div className="flex justify-end gap-2 mt-2">
+                  <button
+                    onClick={() => { setEditingId(null); setEditDraft(''); }}
+                    className="px-3 py-1.5 text-xs rounded-lg border border-border text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    <X className="w-3 h-3 inline mr-1" />Cancel
+                  </button>
+                  <button
+                    onClick={() => handleSaveEdit(comment.id)}
+                    disabled={!editDraft.trim()}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-40"
+                  >
+                    <Check className="w-3 h-3" />
+                    Save
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-foreground/85 leading-relaxed">{comment.body}</p>
+            )}
             <div className="flex items-center gap-4 mt-1">
               <button
                 onClick={() => toggleLike(comment.id)}
@@ -131,6 +187,28 @@ export function CommentsSection({ articleId, userName = 'Reader', userId }: Comm
                 >
                   Reply
                 </button>
+              )}
+              {userId && comment.user_id === userId && (
+                <>
+                  <button
+                    onClick={() => (editingId === comment.id ? null : startEdit(comment))}
+                    className="text-xs text-muted-foreground hover:text-primary transition-colors"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (confirmDeleteId === comment.id) handleDelete(comment.id);
+                      else {
+                        setConfirmDeleteId(comment.id);
+                        setTimeout(() => setConfirmDeleteId((cur) => (cur === comment.id ? null : cur)), 3000);
+                      }
+                    }}
+                    className="text-xs text-muted-foreground hover:text-red-500 transition-colors"
+                  >
+                    {confirmDeleteId === comment.id ? 'Confirm?' : 'Delete'}
+                  </button>
+                </>
               )}
             </div>
 
