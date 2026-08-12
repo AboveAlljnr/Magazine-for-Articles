@@ -1,5 +1,14 @@
 import { createClient } from '@supabase/supabase-js';
-import { getSiteUrl } from './_site';
+
+const DEFAULT_SITE_URL = 'https://magazine-for-articles.vercel.app';
+
+function getSiteUrl(): string {
+  return (
+    (process.env.SITE_URL ||
+      (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '')) ||
+    DEFAULT_SITE_URL
+  ).replace(/\/+$/, '');
+}
 
 function escapeXml(value: string): string {
   return value

@@ -1,4 +1,12 @@
-import { getSiteUrl } from './_site';
+const DEFAULT_SITE_URL = 'https://magazine-for-articles.vercel.app';
+
+function getSiteUrl(): string {
+  return (
+    (process.env.SITE_URL ||
+      (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '')) ||
+    DEFAULT_SITE_URL
+  ).replace(/\/+$/, '');
+}
 
 export default async function handler(req: any, res: any) {
   const siteUrl = getSiteUrl();
