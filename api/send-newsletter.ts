@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
+import { getSiteUrl } from './_site';
 
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') {
@@ -59,7 +60,7 @@ export default async function handler(req: any, res: any) {
       return;
     }
 
-    const siteUrl = ((process.env.SITE_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '')) || 'https://magazine-for-articles.vercel.app').replace(/\/+$/, '');
+    const siteUrl = getSiteUrl();
 
     const storiesHtml = (articles || []).map((a: any) => `
       <tr>

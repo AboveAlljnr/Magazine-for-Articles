@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { getSiteUrl } from './_site';
 
 function escapeXml(value: string): string {
   return value
@@ -24,7 +25,7 @@ export default async function handler(req: any, res: any) {
       .limit(20);
     if (error) throw error;
 
-    const siteUrl = ((process.env.SITE_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '')) || 'https://magazine-for-articles.vercel.app').replace(/\/+$/, '');
+    const siteUrl = getSiteUrl();
 
     const items = (data || []).map((article: any) => {
       const link = `${siteUrl}/articles/${article.slug}`;
