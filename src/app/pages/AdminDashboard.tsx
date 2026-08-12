@@ -445,12 +445,17 @@ function SubscribersSection() {
     return !q || sub.email.toLowerCase().includes(q);
   });
 
-  async function handleSend() {
+  async function handleSend(test = false) {
     setSending(true);
     setSendResult(null);
     try {
-      const result = await sendNewsletter();
-      setSendResult({ ok: true, message: result?.message || `Newsletter sent to ${result?.sent ?? 0} subscriber(s)!` });
+      const result = await sendNewsletter({ test });
+      setSendResult({
+        ok: true,
+        message: test
+          ? 'Test email sent to your inbox.'
+          : result?.message || `Newsletter sent to ${result?.sent ?? 0} subscriber(s)!`,
+      });
     } catch (e: any) {
       setSendResult({ ok: false, message: e?.message || 'Something went wrong.' });
     }
@@ -467,14 +472,24 @@ function SubscribersSection() {
             {loading ? 'Loading…' : `${subscribers.length} subscriber${subscribers.length !== 1 ? 's' : ''}`}
           </p>
         </div>
-        <button
-          onClick={handleSend}
-          disabled={sending || subscribers.length === 0}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm hover:opacity-90 transition-opacity disabled:opacity-50"
-        >
-          <Send className="w-3.5 h-3.5" />
-          {sending ? 'Sending…' : 'Send newsletter'}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => handleSend(true)}
+            disabled={sending}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-border text-sm text-foreground hover:border-primary hover:text-primary transition-colors disabled:opacity-50"
+          >
+            <Mail className="w-3.5 h-3.5" />
+            Send test
+          </button>
+          <button
+            onClick={() => handleSend(false)}
+            disabled={sending || subscribers.length === 0}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm hover:opacity-90 transition-opacity disabled:opacity-50"
+          >
+            <Send className="w-3.5 h-3.5" />
+            {sending ? 'Sending…' : 'Send newsletter'}
+          </button>
+        </div>
       </div>
 
       {sendResult && (

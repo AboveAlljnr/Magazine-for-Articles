@@ -360,12 +360,11 @@ export async function deleteNote(id: number) {
 
 export async function subscribeToNewsletter(email: string) {
   const { error } = await supabase
-    .from('newsletter_subscribers')
-    .insert({ email });
-  if (error && error.code !== '23505') throw error; // 23505 = already subscribed
+    .rpc('subscribe_to_newsletter', { p_email: email });
+  if (error) throw error;
 }
 
-export async function sendNewsletter() {
+export async function sendNewsletter(opts: { test?: boolean } = {}) {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) throw new Error('Not signed in');
   const res = await fetch('/api/send-newsletter', {
@@ -374,6 +373,7 @@ export async function sendNewsletter() {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${session.access_token}`,
     },
+    body: JSON.stringify({ test: !!opts.test }),
   });
   const body = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(body?.error || 'Failed to send newsletter');

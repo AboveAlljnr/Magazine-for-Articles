@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { createHmac } from 'crypto';
 import { Resend } from 'resend';
 
 const DEFAULT_SITE_URL = 'https://magazine-for-articles.vercel.app';
@@ -9,6 +10,10 @@ function getSiteUrl(): string {
       (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '')) ||
     DEFAULT_SITE_URL
   ).replace(/\/+$/, '');
+}
+
+function unsubscribeToken(email: string, secret: string): string {
+  return createHmac('sha256', secret).update(email).digest('hex');
 }
 
 export default async function handler(req: any, res: any) {
@@ -50,12 +55,15 @@ export default async function handler(req: any, res: any) {
       return;
     }
 
-    // 2. Load subscribers + recent articles (service role bypasses RLS)
+    // 2. Load active subscribers + recent articles (service role bypasses RLS)
     const admin = createClient(url, serviceRoleKey, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
     const [{ data: subscribers }, { data: articles }] = await Promise.all([
-      admin.from('newsletter_subscribers').select('email').order('created_at', { ascending: false }),
+      admin.from('newsletter_subscribers')
+        .select('email, status')
+        .eq('status', 'active')
+        .order('created_at', { ascending: false }),
       admin.from('articles')
         .select('title, slug, excerpt, categories(name)')
         .eq('published', true)
@@ -63,13 +71,19 @@ export default async function handler(req: any, res: any) {
         .limit(5),
     ]);
 
-    const emails = (subscribers || []).map((s: any) => s.email).filter(Boolean);
+    // Test mode: only email the signed-in admin (for previewing the send)
+    const testOnly = req.body?.test === true;
+    const emails = (subscribers || [])
+      .map((s: any) => s.email)
+      .filter(Boolean)
+      .filter((e: string) => !testOnly || e === user.email);
     if (emails.length === 0) {
-      res.status(200).json({ sent: 0, total: 0, message: 'No subscribers yet.' });
+      res.status(200).json({ sent: 0, total: 0, message: 'No active subscribers yet.' });
       return;
     }
 
     const siteUrl = getSiteUrl();
+    const hmacSecret = process.env.NEWSLETTER_SECRET || serviceRoleKey;
 
     const storiesHtml = (articles || []).map((a: any) => `
       <tr>
@@ -91,20 +105,26 @@ export default async function handler(req: any, res: any) {
         <hr style="border: none; border-top: 1px solid #d4a574; margin: 24px 0;" />
         <p style="text-align: center; font-size: 12px; color: #6b5346;">
           You're receiving this because you subscribed to Ubuntu Essence.<br/>
-          <a href="${siteUrl}" style="color: #b8652f;">Read more on ubuntuessence</a>
+          <a href="${siteUrl}" style="color: #b8652f;">Read more on ubuntuessence</a> ·
+          <a href="{{UNSUBSCRIBE_LINK}}" style="color: #b8652f;">Unsubscribe</a>
         </p>
       </div>`;
 
     const resend = new Resend(resendKey);
-    const { data, error } = await resend.emails.send({
+    const payloads = emails.map((email: string) => ({
       from: 'Ubuntu Essence <onboarding@resend.dev>',
-      to: emails,
-      subject: 'Ubuntu Essence — This week in African culture & community',
-      html,
-    });
+      to: [email],
+      subject: `${testOnly ? '[TEST] ' : ''}Ubuntu Essence — This week in African culture & community`,
+      html: html.replace(
+        '{{UNSUBSCRIBE_LINK}}',
+        `${siteUrl}/api/unsubscribe?email=${encodeURIComponent(email)}&token=${unsubscribeToken(email, hmacSecret)}`,
+      ),
+    }));
+
+    const { data, error } = await resend.batch.send(payloads);
 
     if (error) throw error;
-    res.status(200).json({ sent: emails.length, total: emails.length, data });
+    res.status(200).json({ sent: emails.length, total: emails.length, data, test: testOnly });
   } catch (e: any) {
     console.error('Newsletter send error', e);
     res.status(500).json({ error: e.message || 'Failed to send newsletter' });
