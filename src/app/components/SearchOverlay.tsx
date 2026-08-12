@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Search, X, Clock, ArrowRight } from 'lucide-react';
+import { optimizedImage } from '../../lib/image';
 
 interface Article { id: number; title: string; excerpt: string; image: string; category: string; subcategory: string; author: string; date?: string; }
 
@@ -97,7 +98,7 @@ export function SearchOverlay({ articles, onClose, onArticleClick }: SearchOverl
                         className="group w-full flex items-center gap-4 p-3 rounded-xl hover:bg-muted/40 transition-colors text-left"
                       >
                         <div className="w-14 h-14 flex-shrink-0 overflow-hidden rounded-lg border border-border">
-                          <img src={article.image} alt={article.title} className="w-full h-full object-cover" />
+                          <img src={optimizedImage(article.image, 96)} alt={article.title} loading="lazy" decoding="async" className="w-full h-full object-cover" />
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-0.5">

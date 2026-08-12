@@ -7,6 +7,7 @@ import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
 import { UpdatePasswordPage } from './pages/UpdatePasswordPage';
 import { getCurrentSession, onAuthChange, signOut, getProfile } from '../lib/api';
 import { ErrorBoundary } from '../lib/ErrorBoundary';
+import { Analytics } from '@vercel/analytics/react';
 
 export default function Root() {
   const navigate = useNavigate();
@@ -96,6 +97,7 @@ export default function Root() {
 
   return (
     <ErrorBoundary>
+      <Analytics />
       <Routes>
         <Route
           path="/login"

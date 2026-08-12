@@ -1,6 +1,7 @@
 import { Clock, Bookmark, BookmarkCheck } from 'lucide-react';
 import type { MappedArticle } from '../lib/article-types';
 import { Avatar } from './Avatar';
+import { optimizedImage } from '../../lib/image';
 
 interface FeaturedArticleProps {
   article: MappedArticle;
@@ -16,8 +17,10 @@ export function FeaturedArticle({ article, onClick, saved, onToggleSave, onAutho
       <div className="grid lg:grid-cols-2 gap-8 items-center">
         <div className="aspect-[4/3] sm:aspect-[3/4] lg:aspect-[4/5] overflow-hidden rounded-lg border border-border relative">
           <img
-            src={article.image}
+            src={optimizedImage(article.image, 1200)}
             alt={article.title}
+            loading="lazy"
+            decoding="async"
             className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
           />
           <div className="absolute top-3 left-3">

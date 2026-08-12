@@ -1,3 +1,5 @@
+import { optimizedImage } from '../../lib/image';
+
 interface AvatarProps {
   name: string;
   src?: string | null;
@@ -14,6 +16,14 @@ const sizeMap: Record<string, string> = {
   xl: 'w-24 h-24 text-4xl',
 };
 
+const widthMap: Record<string, number> = {
+  xs: 96,
+  sm: 96,
+  md: 128,
+  lg: 128,
+  xl: 256,
+};
+
 /**
  * Reusable avatar that renders an `<img>` when `src` is provided,
  * and falls back to a coloured initial circle otherwise.
@@ -26,7 +36,13 @@ export function Avatar({ name, src, size = 'md', onClick, className = '' }: Avat
   const hoverClass = onClick ? 'hover:opacity-80 cursor-pointer' : '';
 
   const inner = src ? (
-    <img src={src} alt={name} className="w-full h-full object-cover" />
+    <img
+      src={optimizedImage(src, widthMap[size] ?? 128)}
+      alt={name}
+      loading="lazy"
+      decoding="async"
+      className="w-full h-full object-cover"
+    />
   ) : (
     <span className="text-primary-foreground select-none">{name.charAt(0).toUpperCase()}</span>
   );

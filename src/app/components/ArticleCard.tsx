@@ -1,6 +1,7 @@
 import { Clock, Bookmark, BookmarkCheck } from 'lucide-react';
 import type { MappedArticle } from '../lib/article-types';
 import { Avatar } from './Avatar';
+import { optimizedImage } from '../../lib/image';
 
 interface ArticleCardProps {
   article: MappedArticle;
@@ -15,8 +16,10 @@ export function ArticleCard({ article, onClick, saved, onToggleSave, onAuthorCli
     <article className="group cursor-pointer" onClick={() => onClick(article)}>
       <div className="aspect-[4/3] overflow-hidden rounded-lg mb-4 border border-border relative">
         <img
-          src={article.image}
+          src={optimizedImage(article.image, 600)}
           alt={article.title}
+          loading="lazy"
+          decoding="async"
           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
         />
         <button

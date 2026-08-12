@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ArrowLeft, User, BookOpen, Settings, Camera } from 'lucide-react';
 import { updateProfile, updatePassword } from '../../lib/api';
+import { optimizedImage } from '../../lib/image';
 import { supabase } from '../../lib/supabase';
 
 const categoryOptions = ['Culture', 'Fashion', 'Heritage', 'Arts', 'Travel', 'Lifestyle'];
@@ -201,8 +202,10 @@ export function ProfilePage({
                   >
                     <div className="w-20 h-20 flex-shrink-0 overflow-hidden rounded-lg border border-border">
                       <img
-                        src={article.image}
+                        src={optimizedImage(article.image, 128)}
                         alt={article.title}
+                        loading="lazy"
+                        decoding="async"
                         className="w-full h-full object-cover"
                       />
                     </div>

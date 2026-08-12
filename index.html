@@ -17,6 +17,12 @@
       <meta property="og:description" content="A digital magazine celebrating African culture, heritage, and the spirit of togetherness." />
       <meta property="og:type" content="website" />
       <meta name="twitter:card" content="summary_large_image" />
+      <script>
+        try {
+          var ueTheme = localStorage.getItem('ue:theme');
+          if (ueTheme === 'dark') document.documentElement.classList.add('dark');
+        } catch (e) {}
+      </script>
       <style>html, body { height: 100%; margin: 0; } #root { height: 100%; }</style>
       
     </head>

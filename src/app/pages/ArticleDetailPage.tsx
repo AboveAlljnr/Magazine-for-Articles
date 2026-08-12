@@ -4,6 +4,7 @@ import { motion } from 'motion/react';
 import { CommentsSection } from '../components/CommentsSection';
 import { Avatar } from '../components/Avatar';
 import { applySeo, resetSeo } from '../lib/seo';
+import { optimizedImage } from '../../lib/image';
 import type { MappedArticle } from '../lib/article-types';
 
 interface ArticleDetailPageProps {
@@ -39,25 +40,60 @@ export function ArticleDetailPage({
   const [shareOpen, setShareOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [resumePct, setResumePct] = useState(0);
+
+  const progressKey = `ue:progress:${article.slug}`;
 
   useEffect(() => {
     window.scrollTo(0, 0);
+    let saveTimer: ReturnType<typeof setTimeout> | undefined;
     const handleScroll = () => {
       setScrolled(window.scrollY > 80);
       const max = document.documentElement.scrollHeight - window.innerHeight;
-      setProgress(max > 0 ? Math.min(1, window.scrollY / max) : 0);
+      const pct = max > 0 ? Math.min(1, window.scrollY / max) : 0;
+      setProgress(pct);
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(() => {
+        try {
+          localStorage.setItem(progressKey, String(pct));
+        } catch { /* ignore */ }
+      }, 300);
     };
     window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, [article.id]);
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      if (saveTimer) clearTimeout(saveTimer);
+    };
+  }, [article.id, progressKey]);
 
   useEffect(() => {
+    try {
+      const stored = parseFloat(localStorage.getItem(progressKey) || '');
+      if (!Number.isNaN(stored) && stored > 0.05 && stored < 0.95) setResumePct(stored);
+    } catch { /* ignore */ }
+  }, [progressKey]);
+
+  useEffect(() => {
+    const published = article.date ? new Date(article.date) : null;
     applySeo({
       title: `${article.title} | Ubuntu Essence`,
       description: article.excerpt,
       image: article.image,
       url: window.location.href,
       type: 'article',
+      jsonLd: {
+        '@context': 'https://schema.org',
+        '@type': 'Article',
+        headline: article.title,
+        description: article.excerpt,
+        ...(article.image ? { image: [article.image] } : {}),
+        ...(published && !Number.isNaN(published.getTime())
+          ? { datePublished: published.toISOString() }
+          : {}),
+        author: { '@type': 'Person', name: article.author },
+        publisher: { '@type': 'Organization', name: 'Ubuntu Essence' },
+        mainEntityOfPage: window.location.href,
+      },
     });
     return () => resetSeo();
   }, [article]);
@@ -81,6 +117,12 @@ export function ArticleDetailPage({
 
   function scrollToParagraph(id: string) {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  function resumeToSaved() {
+    const max = document.documentElement.scrollHeight - window.innerHeight;
+    window.scrollTo({ top: resumePct * max, behavior: 'smooth' });
+    setResumePct(0);
   }
 
   const toc = article.body
@@ -127,6 +169,16 @@ export function ArticleDetailPage({
           </button>
         </div>
       </div>
+
+      {/* Resume reading chip */}
+      {resumePct > 0 && progress < resumePct - 0.03 && (
+        <button
+          onClick={resumeToSaved}
+          className="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-full bg-primary text-primary-foreground text-sm shadow-lg hover:opacity-90 transition-opacity"
+        >
+          Resume at {Math.round(resumePct * 100)}%
+        </button>
+      )}
 
       <div className="max-w-3xl mx-auto px-4 sm:px-6 pt-8 pb-20">
         <button
@@ -223,7 +275,13 @@ export function ArticleDetailPage({
 
         {/* Hero image */}
         <div className="aspect-[16/9] overflow-hidden rounded-xl border border-border mb-12">
-          <img src={article.image} alt={article.title} className="w-full h-full object-cover" />
+          <img
+            src={optimizedImage(article.image, 1600)}
+            alt={article.title}
+            loading="eager"
+            decoding="async"
+            className="w-full h-full object-cover"
+          />
         </div>
 
         {/* Table of contents */}
@@ -311,8 +369,10 @@ export function ArticleDetailPage({
                 <button key={related.id} onClick={() => onArticleClick(related)} className="group text-left">
                   <div className="aspect-[4/3] overflow-hidden rounded-lg border border-border mb-3">
                     <img
-                      src={related.image}
+                      src={optimizedImage(related.image, 600)}
                       alt={related.title}
+                      loading="lazy"
+                      decoding="async"
                       className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                     />
                   </div>

@@ -20,12 +20,38 @@ function absolute(url?: string): string | undefined {
   return new URL(url, window.location.origin).toString();
 }
 
+function upsertCanonical(url?: string) {
+  let el = document.head.querySelector<HTMLLinkElement>('link[rel="canonical"]');
+  if (!url) {
+    if (el) el.remove();
+    return;
+  }
+  if (!el) {
+    el = document.createElement('link');
+    el.setAttribute('rel', 'canonical');
+    document.head.appendChild(el);
+  }
+  el.setAttribute('href', url);
+}
+
+function upsertJsonLd(data?: object) {
+  document.head.querySelectorAll<HTMLScriptElement>('script[data-seo-jsonld]').forEach(n => n.remove());
+  if (!data) return;
+  const el = document.createElement('script');
+  el.type = 'application/ld+json';
+  el.setAttribute('data-seo-jsonld', 'true');
+  el.textContent = JSON.stringify(data);
+  document.head.appendChild(el);
+}
+
 export interface SeoData {
   title: string;
   description?: string;
   image?: string;
   url?: string;
   type?: string;
+  canonical?: string;
+  jsonLd?: object;
 }
 
 export function applySeo({
@@ -34,6 +60,8 @@ export function applySeo({
   image,
   url,
   type = 'website',
+  canonical,
+  jsonLd,
 }: SeoData) {
   const imageUrl = absolute(image);
   document.title = title;
@@ -49,6 +77,8 @@ export function applySeo({
     upsertMeta('property', 'og:image', imageUrl);
     upsertMeta('name', 'twitter:image', imageUrl);
   }
+  upsertCanonical(canonical ?? url ? absolute(canonical ?? url) : undefined);
+  upsertJsonLd(jsonLd);
 }
 
 export function resetSeo() {
@@ -60,4 +90,6 @@ export function resetSeo() {
   upsertMeta('name', 'twitter:card', 'summary_large_image');
   upsertMeta('name', 'twitter:title', DEFAULT_TITLE);
   upsertMeta('name', 'twitter:description', 'A digital magazine celebrating African culture, heritage, and the spirit of togetherness.');
+  upsertCanonical(undefined);
+  upsertJsonLd(undefined);
 }

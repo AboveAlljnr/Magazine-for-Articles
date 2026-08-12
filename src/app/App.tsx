@@ -379,7 +379,9 @@ export default function App({ user, onLogout, onGoToLogin, showSignInPrompt, onD
   const [searchOpen, setSearchOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [savedIds, setSavedIds] = useState<Set<number>>(new Set());
-  const [darkMode, setDarkMode] = useState(false);
+  const [darkMode, setDarkMode] = useState(() =>
+    typeof window !== 'undefined' && document.documentElement.classList.contains('dark')
+  );
   const [articles, setArticles] = useState<any[]>([]);
   const [dbCategories, setDbCategories] = useState<{ name: string; slug: string }[]>([]);
   const [subcategoryMap, setSubcategoryMap] = useState<Record<string, { name: string; slug: string }[]>>({});
@@ -431,9 +433,12 @@ export default function App({ user, onLogout, onGoToLogin, showSignInPrompt, onD
       .catch(() => {});
   }, [user]);
 
-  // Sync dark mode class
+  // Sync dark mode class and persist preference
   useEffect(() => {
     document.documentElement.classList.toggle('dark', darkMode);
+    try {
+      localStorage.setItem('ue:theme', darkMode ? 'dark' : 'light');
+    } catch { /* ignore */ }
   }, [darkMode]);
 
   // Category-aware titles on the home page

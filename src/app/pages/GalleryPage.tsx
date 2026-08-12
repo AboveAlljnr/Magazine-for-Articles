@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { ArrowLeft, Image as ImageIcon } from 'lucide-react';
 import { getAllImagesForGallery } from '../../lib/api';
 import { Lightbox } from '../components/Lightbox';
+import { optimizedImage } from '../../lib/image';
 
 interface GalleryPageProps {
   onBack: () => void;
@@ -65,10 +66,11 @@ export function GalleryPage({ onBack, onImageClick }: GalleryPageProps) {
                 onClick={() => setLightboxIndex(i)}
               >
                 <img
-                  src={img.image_url}
+                  src={optimizedImage(img.image_url, 600)}
                   alt={img.alt_text || img.caption || ''}
                   className="w-full h-auto object-cover"
                   loading="lazy"
+                  decoding="async"
                 />
                 {(img.caption || img.articles?.title) && (
                   <div className="p-3 space-y-1">
