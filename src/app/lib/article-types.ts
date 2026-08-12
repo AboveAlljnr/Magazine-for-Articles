@@ -15,4 +15,6 @@ export interface MappedArticle {
   readTime: string;
   featured: boolean;
   views: number;
+  likes: number;
+  comments: number;
 }

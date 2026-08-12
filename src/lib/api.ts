@@ -388,14 +388,37 @@ export async function searchArticles(query: string) {
     .select(`
       *,
       categories!inner(name, slug),
+      subcategories(name, slug),
       authors!inner(name, slug, avatar_url)
     `)
     .eq('published', true)
-    .textSearch('title', query, { config: 'english' })
+    .textSearch('search_tsv', query, { type: 'websearch', config: 'english' })
     .order('published_at', { ascending: false })
     .limit(20);
   if (error) throw error;
   return data as any[];
+}
+
+export async function getMostReadArticles(limit = 5) {
+  const { data, error } = await supabase
+    .from('articles')
+    .select(`
+      *,
+      categories!inner(name, slug),
+      subcategories(name, slug),
+      authors!inner(name, slug, bio, avatar_url)
+    `)
+    .eq('published', true)
+    .order('views', { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return data as any[];
+}
+
+export async function likeArticle(articleId: number) {
+  const { error } = await supabase
+    .rpc('increment_article_likes', { article_id: articleId });
+  if (error) throw error;
 }
 
 /* ── Admin: Articles ─────────────────────────────────────────────── */

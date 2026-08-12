@@ -3,7 +3,7 @@ import { Routes, Route, useNavigate, useParams, useLocation, Navigate } from 're
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Menu, Search, BookOpen, User, LogOut, ChevronDown,
-  Bookmark, Sun, Moon, LayoutDashboard, BookMarked,
+  Bookmark, Sun, Moon, LayoutDashboard, BookMarked, Eye, Clock,
 } from 'lucide-react';
 import { ArticleCard } from './components/ArticleCard';
 import { FeaturedArticle } from './components/FeaturedArticle';
@@ -22,7 +22,7 @@ import logoUrl from './components/logo.jpg';
 import {
   getArticles, getCategories, getAllSubcategories, getBookmarks,
   addBookmark, removeBookmark, subscribeToNewsletter, getAllArticles, getArticleBySlug,
-  incrementArticleViews,
+  incrementArticleViews, getMostReadArticles,
 } from '../lib/api';
 
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard').then(m => ({ default: m.AdminDashboard })));
@@ -42,6 +42,8 @@ const PT = {
   exit: { opacity: 0, y: -8 },
   transition: { duration: 0.25, ease: 'easeOut' },
 };
+
+const PAGE_SIZE = 6;
 
 /* ── Helpers ────────────────────────────────────────────────────── */
 
@@ -67,6 +69,8 @@ export function toComponentArticle(row: any): MappedArticle {
     readTime: `${row.read_time_minutes} min read`,
     featured: row.featured,
     views: row.views || 0,
+    likes: row.likes_count || 0,
+    comments: row.comments_count || 0,
   };
 }
 
@@ -342,6 +346,48 @@ function NewsletterSection() {
   );
 }
 
+/* ── Most Read ───────────────────────────────────────────────────── */
+
+function MostReadSection({
+  articles,
+  onArticleClick,
+}: {
+  articles: MappedArticle[];
+  onArticleClick: (article: MappedArticle) => void;
+}) {
+  return (
+    <section className="mt-20">
+      <div className="flex items-center justify-between mb-8">
+        <h2 className="text-3xl tracking-tight">Most Read</h2>
+        <span className="text-sm text-muted-foreground">Popular this season</span>
+      </div>
+      <div className="space-y-1">
+        {articles.map((article, index) => (
+          <button
+            key={article.id}
+            onClick={() => onArticleClick(article)}
+            className="group w-full flex items-center gap-5 p-4 rounded-xl hover:bg-muted/40 transition-colors text-left"
+          >
+            <span className="text-3xl font-bold text-primary/20 group-hover:text-primary/40 transition-colors w-12 text-right shrink-0 tabular-nums">
+              {String(index + 1).padStart(2, '0')}
+            </span>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs uppercase tracking-wide text-primary mb-0.5">{article.category}</p>
+              <p className="text-base text-foreground group-hover:text-primary transition-colors line-clamp-1 font-medium">
+                {article.title}
+              </p>
+            </div>
+            <div className="flex items-center gap-4 text-xs text-muted-foreground shrink-0">
+              <span className="flex items-center gap-1"><Eye className="w-3.5 h-3.5" />{article.views}</span>
+              <span className="hidden sm:flex items-center gap-1"><Clock className="w-3.5 h-3.5" />{article.readTime}</span>
+            </div>
+          </button>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 /* ── Empty State ────────────────────────────────────────────────── */
 
 function EmptyState({ category }: { category: string }) {
@@ -386,6 +432,10 @@ export default function App({ user, onLogout, onGoToLogin, showSignInPrompt, onD
   const [dbCategories, setDbCategories] = useState<{ name: string; slug: string }[]>([]);
   const [subcategoryMap, setSubcategoryMap] = useState<Record<string, { name: string; slug: string }[]>>({});
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
+  const [featuredRow, setFeaturedRow] = useState<any | null>(null);
+  const [mostRead, setMostRead] = useState<any[]>([]);
 
   const mappedArticles: MappedArticle[] = articles.map(toComponentArticle);
 
@@ -409,7 +459,17 @@ export default function App({ user, onLogout, onGoToLogin, showSignInPrompt, onD
     }).catch(() => {});
   }, []);
 
-  // Fetch articles when filters change
+  // Fetch featured story + most-read list once
+  useEffect(() => {
+    getArticles({ featured: true, limit: 1 })
+      .then(data => setFeaturedRow((data as any[])[0] || null))
+      .catch(() => {});
+    getMostReadArticles(5)
+      .then(data => setMostRead(data))
+      .catch(() => {});
+  }, []);
+
+  // Fetch first page when filters change
   useEffect(() => {
     setLoading(true);
     const cat = dbCategories.find(c => c.name === activeCategory);
@@ -419,8 +479,13 @@ export default function App({ user, onLogout, onGoToLogin, showSignInPrompt, onD
         activeSubcategory !== 'All'
           ? Object.values(subcategoryMap).flat().find(s => s.name === activeSubcategory)?.slug
           : undefined,
+      limit: PAGE_SIZE,
+      offset: 0,
     })
-      .then(data => setArticles(data as any[]))
+      .then(data => {
+        setArticles(data as any[]);
+        setHasMore((data as any[]).length === PAGE_SIZE);
+      })
       .catch(() => setArticles([]))
       .finally(() => setLoading(false));
   }, [activeCategory, activeSubcategory, dbCategories]);
@@ -478,8 +543,31 @@ export default function App({ user, onLogout, onGoToLogin, showSignInPrompt, onD
     }
   }
 
+  async function handleLoadMore() {
+    if (loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    const cat = dbCategories.find(c => c.name === activeCategory);
+    getArticles({
+      categorySlug: cat?.slug,
+      subcategorySlug:
+        activeSubcategory !== 'All'
+          ? Object.values(subcategoryMap).flat().find(s => s.name === activeSubcategory)?.slug
+          : undefined,
+      limit: PAGE_SIZE,
+      offset: articles.length,
+    })
+      .then(data => {
+        const next = data as any[];
+        setArticles(prev => [...prev, ...next]);
+        setHasMore(next.length === PAGE_SIZE);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingMore(false));
+  }
+
   const dbSubcategories = activeCategory !== 'All' ? subcategoryMap[activeCategory] ?? [] : [];
-  const featuredArticle = mappedArticles.find(a => a.featured);
+  const featuredArticle = featuredRow ? toComponentArticle(featuredRow) : undefined;
+  const gridArticles = mappedArticles.filter(a => a.id !== featuredArticle?.id);
   const savedArticles = mappedArticles.filter(a => savedIds.has(a.id));
   const sectionTitle =
     activeSubcategory !== 'All'
@@ -702,7 +790,7 @@ export default function App({ user, onLogout, onGoToLogin, showSignInPrompt, onD
 
                       {articles.length > 0 ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                          {mappedArticles.map((article, index) => (
+                          {gridArticles.map((article, index) => (
                             <motion.div
                               key={article.id}
                               initial={{ opacity: 0, y: 20 }}
@@ -722,7 +810,26 @@ export default function App({ user, onLogout, onGoToLogin, showSignInPrompt, onD
                       ) : (
                         <EmptyState category={activeCategory} />
                       )}
+
+                      {hasMore && articles.length > 0 && (
+                        <div className="flex justify-center mt-12">
+                          <button
+                            onClick={handleLoadMore}
+                            disabled={loadingMore}
+                            className="px-8 py-3 border border-border rounded-lg text-sm text-foreground hover:border-primary hover:text-primary transition-colors disabled:opacity-60"
+                          >
+                            {loadingMore ? 'Loading…' : 'Load more stories'}
+                          </button>
+                        </div>
+                      )}
                     </section>
+
+                    {activeCategory === 'All' && mostRead.length > 0 && (
+                      <MostReadSection
+                        articles={mostRead.map(toComponentArticle)}
+                        onArticleClick={handleArticleClick}
+                      />
+                    )}
                   </>
                 )}
 

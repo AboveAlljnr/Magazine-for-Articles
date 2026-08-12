@@ -1,4 +1,4 @@
-import { Clock, Bookmark, BookmarkCheck } from 'lucide-react';
+import { Clock, Bookmark, BookmarkCheck, MessageCircle } from 'lucide-react';
 import type { MappedArticle } from '../lib/article-types';
 import { Avatar } from './Avatar';
 import { optimizedImage } from '../../lib/image';
@@ -44,6 +44,15 @@ export function ArticleCard({ article, onClick, saved, onToggleSave, onAuthorCli
             <Clock className="w-3 h-3" />
             {article.readTime}
           </span>
+          {article.comments > 0 && (
+            <>
+              <span>·</span>
+              <span className="flex items-center gap-1">
+                <MessageCircle className="w-3 h-3" />
+                {article.comments}
+              </span>
+            </>
+          )}
         </div>
 
         <h3 className="text-xl text-foreground group-hover:text-primary transition-colors leading-snug">

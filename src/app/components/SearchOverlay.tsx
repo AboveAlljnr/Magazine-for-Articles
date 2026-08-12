@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Search, X, Clock, ArrowRight } from 'lucide-react';
 import { optimizedImage } from '../../lib/image';
+import { searchArticles } from '../../lib/api';
 
 interface Article { id: number; title: string; excerpt: string; image: string; category: string; subcategory: string; author: string; date?: string; }
 
@@ -12,6 +13,8 @@ interface SearchOverlayProps {
 
 export function SearchOverlay({ articles, onClose, onArticleClick }: SearchOverlayProps) {
   const [query, setQuery] = useState('');
+  const [serverResults, setServerResults] = useState<Article[]>([]);
+  const [searching, setSearching] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -27,7 +30,42 @@ export function SearchOverlay({ articles, onClose, onArticleClick }: SearchOverl
     };
   }, [onClose]);
 
-  const results = query.trim().length < 2
+  // Server-side full-text search, debounced
+  useEffect(() => {
+    const q = query.trim();
+    if (q.length < 2) {
+      setServerResults([]);
+      setSearching(false);
+      return;
+    }
+    let cancelled = false;
+    setSearching(true);
+    const timer = setTimeout(() => {
+      searchArticles(q)
+        .then((rows: any[]) => {
+          if (cancelled) return;
+          setServerResults(rows.map(r => ({
+            id: r.id,
+            title: r.title,
+            excerpt: r.excerpt,
+            image: r.image_url,
+            category: r.categories?.name || '',
+            subcategory: r.subcategories?.name || '',
+            author: r.authors?.name || '',
+            date: r.published_at,
+          })));
+        })
+        .catch(() => { if (!cancelled) setServerResults([]); })
+        .finally(() => { if (!cancelled) setSearching(false); });
+    }, 250);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [query]);
+
+  // Instant client-side matches over the currently-loaded list
+  const localResults = query.trim().length < 2
     ? []
     : articles.filter((a) => {
         const q = query.toLowerCase();
@@ -39,6 +77,11 @@ export function SearchOverlay({ articles, onClose, onArticleClick }: SearchOverl
           a.subcategory.toLowerCase().includes(q)
         );
       });
+
+  // Prefer full-text results, merged with local matches (deduped)
+  const results = serverResults.length > 0
+    ? [...localResults, ...serverResults.filter(s => !localResults.some(l => l.id === s.id))]
+    : localResults;
 
   const trending = articles.slice(0, 5);
 
@@ -88,7 +131,7 @@ export function SearchOverlay({ articles, onClose, onArticleClick }: SearchOverl
               results.length > 0 ? (
                 <div>
                   <p className="text-xs uppercase tracking-widest text-muted-foreground mb-4">
-                    {results.length} result{results.length !== 1 ? 's' : ''}
+                    {searching ? 'Searching…' : `${results.length} result${results.length !== 1 ? 's' : ''}`}
                   </p>
                   <div className="space-y-1">
                     {results.map((article) => (

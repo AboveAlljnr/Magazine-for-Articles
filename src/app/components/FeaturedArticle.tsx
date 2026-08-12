@@ -1,4 +1,4 @@
-import { Clock, Bookmark, BookmarkCheck } from 'lucide-react';
+import { Clock, Bookmark, BookmarkCheck, MessageCircle } from 'lucide-react';
 import type { MappedArticle } from '../lib/article-types';
 import { Avatar } from './Avatar';
 import { optimizedImage } from '../../lib/image';
@@ -50,6 +50,15 @@ export function FeaturedArticle({ article, onClick, saved, onToggleSave, onAutho
               <Clock className="w-4 h-4" />
               {article.readTime}
             </span>
+            {article.comments > 0 && (
+              <>
+                <span>·</span>
+                <span className="flex items-center gap-1">
+                  <MessageCircle className="w-3.5 h-3.5" />
+                  {article.comments}
+                </span>
+              </>
+            )}
           </div>
 
           <h2 className="text-4xl md:text-5xl lg:text-6xl leading-tight text-foreground group-hover:text-primary transition-colors">

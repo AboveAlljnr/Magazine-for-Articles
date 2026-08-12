@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft, Clock, Bookmark, BookmarkCheck, Share2, Facebook, Link, List, Eye } from 'lucide-react';
+import { ArrowLeft, Clock, Bookmark, BookmarkCheck, Share2, Facebook, Link, List, Eye, Heart } from 'lucide-react';
 import { motion } from 'motion/react';
 import { CommentsSection } from '../components/CommentsSection';
 import { Avatar } from '../components/Avatar';
 import { applySeo, resetSeo } from '../lib/seo';
 import { optimizedImage } from '../../lib/image';
+import { likeArticle } from '../../lib/api';
 import type { MappedArticle } from '../lib/article-types';
 
 interface ArticleDetailPageProps {
@@ -41,8 +42,30 @@ export function ArticleDetailPage({
   const [copied, setCopied] = useState(false);
   const [progress, setProgress] = useState(0);
   const [resumePct, setResumePct] = useState(0);
+  const [liked, setLiked] = useState(false);
+  const [likeCount, setLikeCount] = useState(article.likes);
 
   const progressKey = `ue:progress:${article.slug}`;
+  const likeKey = `ue:liked:${article.id}`;
+
+  useEffect(() => {
+    setLikeCount(article.likes);
+    try {
+      setLiked(localStorage.getItem(likeKey) === '1');
+    } catch { /* ignore */ }
+  }, [article.likes, likeKey]);
+
+  function handleLike() {
+    if (liked) return;
+    setLiked(true);
+    setLikeCount(c => c + 1);
+    try { localStorage.setItem(likeKey, '1'); } catch { /* ignore */ }
+    likeArticle(article.id).catch(() => {
+      setLiked(false);
+      setLikeCount(c => Math.max(0, c - 1));
+      try { localStorage.removeItem(likeKey); } catch { /* ignore */ }
+    });
+  }
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -264,6 +287,14 @@ export function ArticleDetailPage({
                 </div>
               )}
             </div>
+            <button
+              onClick={handleLike}
+              className={`p-2 rounded-lg hover:bg-muted transition-colors flex items-center gap-1.5 ${liked ? 'text-red-500' : 'text-muted-foreground hover:text-foreground'}`}
+              aria-label={liked ? 'You liked this article' : 'Like this article'}
+            >
+              <Heart className={`w-4 h-4 ${liked ? 'fill-current' : ''}`} />
+              <span className="text-xs tabular-nums">{likeCount > 0 ? likeCount : ''}</span>
+            </button>
             <button
               onClick={onToggleSave}
               className={`p-2 rounded-lg hover:bg-muted transition-colors ${saved ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}`}
