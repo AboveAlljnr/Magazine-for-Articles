@@ -11,7 +11,7 @@ import { Analytics } from '@vercel/analytics/react';
 
 export default function Root() {
   const navigate = useNavigate();
-  const [user, setUser] = useState<{ id: string; name: string; isAdmin: boolean } | null>(null);
+  const [user, setUser] = useState<{ id: string; name: string; isAdmin: boolean; email?: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [signInPrompt, setSignInPrompt] = useState(true);
 
@@ -20,17 +20,17 @@ export default function Root() {
   useEffect(() => {
     getCurrentSession()
       .then(({ data: { session } }) => {
-        if (session?.user) resolveUser(session.user.id);
+        if (session?.user) resolveUser(session.user.id, session.user.email ?? undefined);
         else setLoading(false);
       })
       .catch(() => setLoading(false));
 
     const sub = onAuthChange((event, session) => {
       if (event === 'PASSWORD_RECOVERY' && session?.user) {
-        setUser({ id: session.user.id, name: session.user.email?.split('@')[0] || 'User', isAdmin: false });
+        setUser({ id: session.user.id, name: session.user.email?.split('@')[0] || 'User', isAdmin: false, email: session.user.email ?? undefined });
         navigate('/update-password');
       } else if (session?.user) {
-        resolveUser(session.user.id);
+        resolveUser(session.user.id, session.user.email ?? undefined);
       } else {
         setUser(null);
       }
@@ -66,12 +66,12 @@ export default function Root() {
     };
   }, []);
 
-  async function resolveUser(userId: string) {
+  async function resolveUser(userId: string, email?: string) {
     try {
       const profile = await getProfile(userId);
-      setUser({ id: userId, name: profile.display_name, isAdmin: profile.is_admin });
+      setUser({ id: userId, name: profile.display_name, isAdmin: profile.is_admin, email });
     } catch {
-      setUser({ id: userId, name: 'Reader', isAdmin: false });
+      setUser({ id: userId, name: 'Reader', isAdmin: false, email });
     } finally {
       setLoading(false);
     }

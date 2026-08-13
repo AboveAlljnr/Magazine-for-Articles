@@ -1,6 +1,6 @@
-import { useState } from 'react';
-import { ArrowLeft, User, BookOpen, Settings, Camera } from 'lucide-react';
-import { updateProfile, updatePassword } from '../../lib/api';
+import { useState, useEffect, useRef } from 'react';
+import { ArrowLeft, User, BookOpen, Settings, Camera, Loader2 } from 'lucide-react';
+import { updateProfile, updatePassword, getProfile } from '../../lib/api';
 import { optimizedImage } from '../../lib/image';
 import { supabase } from '../../lib/supabase';
 
@@ -30,6 +30,9 @@ export function ProfilePage({
   const [email, setEmail] = useState(user.email ?? '');
   const [password, setPassword] = useState('');
   const [saved, setSaved] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
   const [prefsSaved, setPrefsSaved] = useState(false);
   const [selectedCategories, setSelectedCategories] = useState<string[]>(['Culture', 'Heritage']);
   const [newsletter, setNewsletter] = useState(true);
@@ -40,6 +43,37 @@ export function ProfilePage({
     setSelectedCategories((prev) =>
       prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat]
     );
+  }
+
+  // Load the current avatar from the user's profile
+  useEffect(() => {
+    if (!user.id) return;
+    getProfile(user.id).then(p => setAvatarUrl(p.avatar_url)).catch(() => {});
+  }, [user.id]);
+
+  async function handleAvatarUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file || !user.id) return;
+    if (!file.type.startsWith('image/')) return;
+    if (file.size > 2 * 1024 * 1024) return;
+
+    setUploadingAvatar(true);
+    try {
+      const ext = file.name.split('.').pop() || 'png';
+      const path = `${user.id}/${Date.now()}.${ext}`;
+      const { data, error } = await supabase.storage
+        .from('avatars')
+        .upload(path, file, { contentType: file.type, upsert: true });
+      if (error) throw error;
+      const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(data.path);
+      await updateProfile(user.id, { avatar_url: publicUrl });
+      setAvatarUrl(publicUrl);
+    } catch (err) {
+      console.error('Avatar upload failed', err);
+    } finally {
+      setUploadingAvatar(false);
+    }
   }
 
   async function handleSaveProfile(e: React.FormEvent) {
@@ -86,11 +120,28 @@ export function ProfilePage({
         {/* Profile hero */}
         <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 mb-10">
           <div className="relative">
-            <div className="w-20 h-20 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-2xl font-medium">
-              {name.charAt(0).toUpperCase()}
+            <div className="w-20 h-20 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-2xl font-medium overflow-hidden">
+              {avatarUrl ? (
+                <img src={avatarUrl} alt={name} className="w-full h-full object-cover" />
+              ) : (
+                name.charAt(0).toUpperCase()
+              )}
             </div>
-            <button className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-card border border-border flex items-center justify-center hover:bg-muted transition-colors">
-              <Camera className="w-3.5 h-3.5 text-muted-foreground" />
+            <input
+              ref={avatarInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/gif,image/webp"
+              onChange={handleAvatarUpload}
+              className="hidden"
+            />
+            <button
+              type="button"
+              onClick={() => avatarInputRef.current?.click()}
+              disabled={uploadingAvatar}
+              aria-label="Upload profile photo"
+              className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-card border border-border flex items-center justify-center hover:bg-muted transition-colors disabled:opacity-60"
+            >
+              {uploadingAvatar ? <Loader2 className="w-3.5 h-3.5 text-muted-foreground animate-spin" /> : <Camera className="w-3.5 h-3.5 text-muted-foreground" />}
             </button>
           </div>
           <div className="text-center sm:text-left">

@@ -190,7 +190,7 @@ export function ArticleEditor({ article, onClose, onSaved }: ArticleEditorProps)
     setUploadingGallery(true);
 
     try {
-      for (const file of Array.from(files)) {
+      for (const [idx, file] of Array.from(files).entries()) {
         if (!file.type.startsWith('image/')) continue;
         if (file.size > 5 * 1024 * 1024) continue;
 
@@ -210,13 +210,16 @@ export function ArticleEditor({ article, onClose, onSaved }: ArticleEditorProps)
           .from('article-images')
           .getPublicUrl(data.path);
 
+        // Increment per file so a multi-file batch gets unique sequential sort orders
+        const sortOrder = galleryImages.length + idx + 1;
+
         const newImg = {
-          id: -Date.now(), // temporary id
+          id: -Date.now() - idx, // temporary id
           article_id: articleId || 0,
           image_url: publicUrl,
           caption: '',
           alt_text: title.trim() || 'Article image',
-          sort_order: galleryImages.length + 1,
+          sort_order: sortOrder,
           created_at: new Date().toISOString(),
         };
 
@@ -229,7 +232,7 @@ export function ArticleEditor({ article, onClose, onSaved }: ArticleEditorProps)
             image_url: publicUrl,
             caption: '',
             alt_text: title.trim() || 'Article image',
-            sort_order: galleryImages.length + 1,
+            sort_order: sortOrder,
           }).catch(console.error);
         }
       }

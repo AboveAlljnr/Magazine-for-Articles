@@ -19,6 +19,11 @@ function escapeXml(value: string): string {
     .replace(/'/g, '&apos;');
 }
 
+// A body containing `]]>` would prematurely close the CDATA section and break the feed.
+function escapeCdata(value: string): string {
+  return value.replace(/]]>/g, ']]]]><![CDATA[>');
+}
+
 export default async function handler(req: any, res: any) {
   try {
     const url = process.env.VITE_SUPABASE_URL || '';
@@ -47,7 +52,7 @@ export default async function handler(req: any, res: any) {
       <pubDate>${new Date(article.published_at || Date.now()).toUTCString()}</pubDate>
       <description>${escapeXml(article.excerpt || '')}</description>
       ${article.image_url ? `<enclosure url="${escapeXml(article.image_url)}" type="image/jpeg" />` : ''}
-      <content:encoded><![CDATA[${bodyText}]]></content:encoded>
+      <content:encoded><![CDATA[${escapeCdata(bodyText)}]]></content:encoded>
       ${category ? `<category>${escapeXml(category)}</category>` : ''}
       ${article.authors?.name ? `<dc:creator>${escapeXml(article.authors.name)}</dc:creator>` : ''}
     </item>`;

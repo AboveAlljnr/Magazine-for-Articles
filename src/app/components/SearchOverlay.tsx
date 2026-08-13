@@ -3,7 +3,7 @@ import { Search, X, Clock, ArrowRight } from 'lucide-react';
 import { optimizedImage } from '../../lib/image';
 import { searchArticles } from '../../lib/api';
 
-interface Article { id: number; title: string; excerpt: string; image: string; category: string; subcategory: string; author: string; date?: string; }
+interface Article { id: number; slug: string; title: string; excerpt: string; image: string; category: string; subcategory: string; author: string; date?: string; }
 
 interface SearchOverlayProps {
   articles: Article[];
@@ -46,6 +46,7 @@ export function SearchOverlay({ articles, onClose, onArticleClick }: SearchOverl
           if (cancelled) return;
           setServerResults(rows.map(r => ({
             id: r.id,
+            slug: r.slug,
             title: r.title,
             excerpt: r.excerpt,
             image: r.image_url,

@@ -409,7 +409,7 @@ function EmptyState({ category }: { category: string }) {
 /* ── App ────────────────────────────────────────────────────────── */
 
 interface AppProps {
-  user?: { id: string; name: string; isAdmin?: boolean } | null;
+  user?: { id: string; name: string; isAdmin?: boolean; email?: string } | null;
   onLogout?: () => void;
   onGoToLogin?: () => void;
   showSignInPrompt?: boolean;
@@ -425,6 +425,7 @@ export default function App({ user, onLogout, onGoToLogin, showSignInPrompt, onD
   const [searchOpen, setSearchOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [savedIds, setSavedIds] = useState<Set<number>>(new Set());
+  const [savedArticles, setSavedArticles] = useState<MappedArticle[]>([]);
   const [darkMode, setDarkMode] = useState(() =>
     typeof window !== 'undefined' && document.documentElement.classList.contains('dark')
   );
@@ -490,12 +491,11 @@ export default function App({ user, onLogout, onGoToLogin, showSignInPrompt, onD
       .finally(() => setLoading(false));
   }, [activeCategory, activeSubcategory, dbCategories]);
 
-  // Fetch bookmarks when user changes
+  // Fetch bookmarks (ids + full articles) when user changes
   useEffect(() => {
-    if (!user?.id) return;
-    getBookmarks(user.id)
-      .then(data => setSavedIds(new Set(data.map((b: any) => b.article_id))))
-      .catch(() => {});
+    if (!user?.id) { setSavedIds(new Set()); setSavedArticles([]); return; }
+    refreshBookmarks(user.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   // Sync dark mode class and persist preference
@@ -531,15 +531,25 @@ export default function App({ user, onLogout, onGoToLogin, showSignInPrompt, onD
     navigate(`/authors/${encodeURIComponent(name)}`);
   }
 
+  async function refreshBookmarks(userId: string) {
+    try {
+      const data = await getBookmarks(userId);
+      setSavedIds(new Set(data.map((b: any) => b.article_id)));
+      setSavedArticles(data.map((b: any) => toComponentArticle(b.articles)));
+    } catch { /* ignore */ }
+  }
+
   async function handleToggleSave(article: MappedArticle) {
     if (!user?.id) return;
     const already = savedIds.has(article.id);
     if (already) {
       await removeBookmark(user.id, article.id);
       setSavedIds(prev => { const n = new Set(prev); n.delete(article.id); return n; });
+      setSavedArticles(prev => prev.filter(a => a.id !== article.id));
     } else {
       await addBookmark(user.id, article.id);
       setSavedIds(prev => { const n = new Set(prev); n.add(article.id); return n; });
+      setSavedArticles(prev => prev.some(a => a.id === article.id) ? prev : [article, ...prev]);
     }
   }
 
@@ -568,7 +578,6 @@ export default function App({ user, onLogout, onGoToLogin, showSignInPrompt, onD
   const dbSubcategories = activeCategory !== 'All' ? subcategoryMap[activeCategory] ?? [] : [];
   const featuredArticle = featuredRow ? toComponentArticle(featuredRow) : undefined;
   const gridArticles = mappedArticles.filter(a => a.id !== featuredArticle?.id);
-  const savedArticles = mappedArticles.filter(a => savedIds.has(a.id));
   const sectionTitle =
     activeSubcategory !== 'All'
       ? `${activeCategory} — ${activeSubcategory}`
@@ -965,8 +974,14 @@ export default function App({ user, onLogout, onGoToLogin, showSignInPrompt, onD
           }
         />
 
-        {/* ── Admin ── */}
-        <Route path="/admin" element={<Suspense fallback={<LazyLoader />}><AdminPageWrapper savedCount={savedIds.size} /></Suspense>} />
+        {/* ── Admin (admins only) ── */}
+        <Route path="/admin" element={
+          user?.isAdmin ? (
+            <Suspense fallback={<LazyLoader />}><AdminPageWrapper savedCount={savedIds.size} /></Suspense>
+          ) : (
+            <Navigate to="/" replace />
+          )
+        } />
 
         {/* ── Static pages ── */}
         <Route path="/privacy"  element={<motion.div key="privacy"  {...PT}><StaticPage title={privacyPage.title}  sections={privacyPage.sections}  onBack={() => navigate('/')} /></motion.div>} />

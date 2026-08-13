@@ -78,7 +78,7 @@ export function Lightbox({ images, currentIndex, onClose, onPrev, onNext }: Ligh
         {current.article_title && (
           <p className="text-xs text-white/50 mt-1">
             {current.article_slug ? (
-              <a href={`/article/${current.article_slug}`} className="hover:underline">{current.article_title}</a>
+              <a href={`/articles/${current.article_slug}`} className="hover:underline">{current.article_title}</a>
             ) : (
               current.article_title
             )}

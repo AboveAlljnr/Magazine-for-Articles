@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import { Bold, Italic, Heading1, Heading2, List, ListOrdered, Quote, Undo, Redo } from 'lucide-react';
@@ -38,6 +39,23 @@ export function RichEditor({ value, onChange }: RichEditorProps) {
       onChange(paragraphs);
     },
   });
+
+  // Keep the editor in sync when `value` changes from outside (e.g. restored draft
+  // or loading an article for editing), without clobbering in-progress typing.
+  useEffect(() => {
+    if (!editor) return;
+    const next = {
+      type: 'doc',
+      content: value.map((p) => ({
+        type: 'paragraph',
+        content: p ? [{ type: 'text', text: p }] : [],
+      })),
+    };
+    const current = editor.getJSON();
+    if (JSON.stringify(current) !== JSON.stringify(next)) {
+      editor.commands.setContent(next, { emitUpdate: false });
+    }
+  }, [editor, value]);
 
   if (!editor) return null;
 
