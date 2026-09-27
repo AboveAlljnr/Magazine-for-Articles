@@ -6,6 +6,8 @@ import {
   Bookmark, Sun, Moon, LayoutDashboard, BookMarked, Eye, Clock,
 } from 'lucide-react';
 import { ArticleCard } from './components/ArticleCard';
+import { StorySeries } from './components/StorySeries';
+import { Link } from 'react-router';
 import { FeaturedArticle } from './components/FeaturedArticle';
 import { CategoryNav } from './components/CategoryNav';
 import { SearchOverlay } from './components/SearchOverlay';
@@ -612,6 +614,7 @@ export default function App({ user, onLogout, onGoToLogin, showSignInPrompt, onD
       )}
 
       <Routes>
+        <Route path="/series/:seriesSlug" element={<StorySeries />} />
         {/* ── Main magazine ── */}
         <Route
           path="/"
@@ -680,7 +683,7 @@ export default function App({ user, onLogout, onGoToLogin, showSignInPrompt, onD
                         className="w-8 h-8 sm:w-9 sm:h-9 object-contain mix-blend-multiply dark:invert dark:mix-blend-screen"
                       />
                       <span
-                        className="text-sm sm:text-lg xl:text-xl tracking-tight text-primary font-semibold"
+                        className="magazine-wordmark text-sm sm:text-lg xl:text-xl tracking-tight text-primary font-semibold"
                         style={{ fontFamily: "'Inter', system-ui, sans-serif" }}
                       >
                         UBUNTU ESSENCE
@@ -755,6 +758,28 @@ export default function App({ user, onLogout, onGoToLogin, showSignInPrompt, onD
 
               {/* Main content */}
               <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+                {activeCategory === 'All' && (
+                  <section aria-labelledby="welcome-heading" className="mb-12 rounded-2xl border border-border bg-muted/30 p-6 sm:p-10">
+                    <p className="text-xs uppercase tracking-widest text-primary mb-4">Welcome to Ubuntu Essence</p>
+                    <h1 id="welcome-heading" className="max-w-3xl text-3xl sm:text-5xl leading-tight mb-5">Stories rooted in culture. Reflections that connect us.</h1>
+                    <p className="max-w-2xl text-base sm:text-lg leading-relaxed text-muted-foreground">Explore African heritage, campus life, faith, and the everyday moments that shape who we are.</p>
+                    <div className="flex flex-wrap gap-3 mt-6">
+                      <a href="#latest-stories" className="rounded-lg bg-primary text-primary-foreground px-5 py-3">Explore stories</a>
+                      <Link to="/about" className="rounded-lg border border-border px-5 py-3 hover:bg-muted">Our story</Link>
+                      <Link to="/series/kayla-in-ho" className="rounded-lg border border-border px-5 py-3 hover:bg-muted">Follow Kayla in Ho →</Link>
+                    </div>
+                    {!loading && mappedArticles.length > 0 && <div className="mt-8 pt-6 border-t border-border">
+                      <h2 className="text-lg mb-4">Start here</h2>
+                      <div className="grid sm:grid-cols-3 gap-3">
+                        {[...new Map([...(featuredArticle ? [featuredArticle] : []), ...mappedArticles].map(a => [a.id, a])).values()].slice(0, 3).map((article, index) => <Link key={article.id} to={`/articles/${article.slug}`} className="rounded-xl bg-background border border-border p-4 hover:border-primary">
+                          <span className="block text-xs text-primary mb-2">0{index + 1} · {article.category}</span>
+                          <span className="block leading-snug">{article.title}</span>
+                          <span className="block text-xs text-muted-foreground mt-3">{article.readTime}</span>
+                        </Link>)}
+                      </div>
+                    </div>}
+                  </section>
+                )}
                 {loading ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8" aria-label="Loading stories">
                     {Array.from({ length: 6 }).map((_, i) => (
@@ -785,7 +810,7 @@ export default function App({ user, onLogout, onGoToLogin, showSignInPrompt, onD
                       />
                     )}
 
-                    <section className={activeCategory === 'All' && featuredArticle ? 'mt-16' : ''}>
+                    <section id="latest-stories" className={`scroll-mt-24 ${activeCategory === 'All' && featuredArticle ? 'mt-16' : ''}`}>
                       <div className="flex items-center justify-between mb-8">
                         <h2 className="text-3xl tracking-tight">{sectionTitle}</h2>
                         {savedIds.size > 0 && (

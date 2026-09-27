@@ -19,7 +19,7 @@ export function FeaturedArticle({ article, onClick, saved, onToggleSave, onAutho
           <img
             src={optimizedImage(article.image, 1200)}
             alt={article.title}
-            loading="lazy"
+            loading="eager"
             decoding="async"
             className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
           />
@@ -41,7 +41,7 @@ export function FeaturedArticle({ article, onClick, saved, onToggleSave, onAutho
         </div>
 
         <div className="space-y-6">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
             <span className="uppercase tracking-wider text-primary">{article.category}</span>
             <span>·</span>
             <span className="text-muted-foreground/70 text-xs uppercase tracking-wide">{article.subcategory}</span>
@@ -61,7 +61,7 @@ export function FeaturedArticle({ article, onClick, saved, onToggleSave, onAutho
             )}
           </div>
 
-          <h2 className="text-4xl md:text-5xl lg:text-6xl leading-tight text-foreground group-hover:text-primary transition-colors">
+          <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl leading-tight text-foreground group-hover:text-primary transition-colors">
             {article.title}
           </h2>
 
