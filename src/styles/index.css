@@ -1,12 +1,2 @@
 @import './tailwind.css';
 @import './theme.css';
-
-
-/* Keep long article text and touch controls comfortable on small screens. */
-.article-reader { overflow-wrap: anywhere; }
-.article-reader button { min-height: 44px; min-width: 44px; }
-.article-reader [id^="para-"] { scroll-margin-top: 5rem; }
-:focus-visible { outline: 2px solid var(--primary); outline-offset: 4px; }
-@media (max-width: 380px) {
-  .magazine-wordmark { display: none; }
-}

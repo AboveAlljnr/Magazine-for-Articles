@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { ArrowLeft, Clock, Bookmark, BookmarkCheck, Share2, Facebook, Link, List, Eye, Heart } from 'lucide-react';
 import { motion } from 'motion/react';
 import { CommentsSection } from '../components/CommentsSection';
-import { StorySeries } from '../components/StorySeries';
 import { Avatar } from '../components/Avatar';
 import { applySeo, resetSeo } from '../lib/seo';
 import { optimizedImage } from '../../lib/image';
@@ -51,8 +50,6 @@ export function ArticleDetailPage({
 
   useEffect(() => {
     setLikeCount(article.likes);
-    setShareOpen(false);
-    setCopied(false);
     try {
       setLiked(localStorage.getItem(likeKey) === '1');
     } catch { /* ignore */ }
@@ -72,8 +69,6 @@ export function ArticleDetailPage({
 
   useEffect(() => {
     window.scrollTo(0, 0);
-    setProgress(0);
-    setScrolled(false);
     let saveTimer: ReturnType<typeof setTimeout> | undefined;
     const handleScroll = () => {
       setScrolled(window.scrollY > 80);
@@ -95,7 +90,6 @@ export function ArticleDetailPage({
   }, [article.id, progressKey]);
 
   useEffect(() => {
-    setResumePct(0);
     try {
       const stored = parseFloat(localStorage.getItem(progressKey) || '');
       if (!Number.isNaN(stored) && stored > 0.05 && stored < 0.95) setResumePct(stored);
@@ -170,7 +164,7 @@ export function ArticleDetailPage({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -8 }}
       transition={{ duration: 0.25, ease: 'easeOut' }}
-      className="article-reader min-h-screen bg-background"
+      className="min-h-screen bg-background"
     >
       {/* Reading progress bar */}
       <div className="fixed top-0 left-0 right-0 z-50 h-0.5 bg-muted pointer-events-none">
@@ -194,7 +188,7 @@ export function ArticleDetailPage({
             <ArrowLeft className="w-4 h-4" />Back
           </button>
           <p className="text-sm text-foreground line-clamp-1 flex-1 text-center">{article.title}</p>
-          <button aria-label={saved ? "Remove from saved stories" : "Save story"} aria-pressed={saved} onClick={onToggleSave} className="flex-shrink-0 text-muted-foreground hover:text-primary transition-colors">
+          <button onClick={onToggleSave} className="flex-shrink-0 text-muted-foreground hover:text-primary transition-colors">
             {saved ? <BookmarkCheck className="w-4 h-4 text-primary" /> : <Bookmark className="w-4 h-4" />}
           </button>
         </div>
@@ -219,20 +213,20 @@ export function ArticleDetailPage({
         </button>
 
         {/* Breadcrumb */}
-        <div className="flex flex-wrap items-center gap-2 text-xs mb-5">
+        <div className="flex items-center gap-2 text-xs mb-5">
           <span className="uppercase tracking-widest text-primary">{article.category}</span>
           <span className="text-border">·</span>
           <span className="uppercase tracking-widest text-muted-foreground">{article.subcategory}</span>
         </div>
 
-        <h1 className="text-3xl sm:text-5xl break-words leading-tight text-foreground mb-6">{article.title}</h1>
+        <h1 className="text-4xl sm:text-5xl leading-tight text-foreground mb-6">{article.title}</h1>
 
         <p className="text-xl text-muted-foreground leading-relaxed mb-8 border-l-4 border-primary pl-5">
           {article.excerpt}
         </p>
 
         {/* Author + meta */}
-        <div className="flex flex-wrap items-center justify-between gap-4 py-5 border-y border-border mb-10">
+        <div className="flex items-center justify-between py-5 border-y border-border mb-10">
           <div className="flex items-center gap-3">
             <Avatar
               name={article.author}
@@ -247,7 +241,7 @@ export function ArticleDetailPage({
               >
                 {article.author}
               </button>
-              <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground mt-0.5">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
                 <span>{article.date}</span>
                 <span>·</span>
                 <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{article.readTime}</span>
@@ -264,8 +258,6 @@ export function ArticleDetailPage({
           <div className="flex items-center gap-2">
             <div className="relative">
               <button
-                aria-label="Share article"
-                aria-expanded={shareOpen}
                 onClick={() => setShareOpen(!shareOpen)}
                 className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
               >
@@ -273,7 +265,7 @@ export function ArticleDetailPage({
               </button>
               {shareOpen && (
                 <div className="absolute right-0 top-full mt-2 w-40 bg-card border border-border rounded-xl shadow-lg py-1 z-50"
-                  style={{ left: 0, right: 'auto', minWidth: '10rem' }}>
+                  style={{ right: 'auto', left: '50%', transform: 'translateX(-50%)', minWidth: '10rem' }}>
                   <button
                     onClick={() => openShare(`https://twitter.com/intent/tweet?text=${encodeURIComponent(article.title)}&url=${shareUrl()}`)}
                     className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-muted/50 transition-colors"
@@ -306,7 +298,7 @@ export function ArticleDetailPage({
               <span className="text-xs tabular-nums">{likeCount > 0 ? likeCount : ''}</span>
             </button>
             <button
-              aria-label={saved ? "Remove from saved stories" : "Save story"} aria-pressed={saved} onClick={onToggleSave}
+              onClick={onToggleSave}
               className={`p-2 rounded-lg hover:bg-muted transition-colors ${saved ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}`}
             >
               {saved ? <BookmarkCheck className="w-4 h-4" /> : <Bookmark className="w-4 h-4" />}
@@ -380,8 +372,6 @@ export function ArticleDetailPage({
             );
           })}
         </div>
-
-        <StorySeries articleSlug={article.slug} />
 
         {/* Decorative divider */}
         <div className="my-14 flex items-center gap-4">

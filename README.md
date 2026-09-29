@@ -4,12 +4,6 @@ A digital magazine for Ubuntu Essence — celebrating African culture, heritage,
 
 ## Running the code
 
-### Story series
-
-Series are curated in `src/app/components/StorySeries.tsx`. Add article slugs to a series' `articles` array in reading order, or add another series with a unique slug, title, and description. The series page lives at `/series/<slug>`. Only published articles appear; previous and next chapter links follow the configured order. The initial Kayla in Ho series contains the existing first chapter. Publishing further chapters also requires adding their slugs to this list.
-
-### Local development
-
 ```sh
 npm i       # install dependencies
 npm run dev # start the development server
