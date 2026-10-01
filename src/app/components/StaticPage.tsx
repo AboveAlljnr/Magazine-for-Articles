@@ -10,7 +10,7 @@ interface StaticPageProps {
 
 export function StaticPage({ title, sections, onBack }: StaticPageProps) {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="heritage-background min-h-screen bg-background">
       <header className="sticky top-0 z-30 bg-background/95 backdrop-blur-sm border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center gap-4">
           <button onClick={onBack} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors">

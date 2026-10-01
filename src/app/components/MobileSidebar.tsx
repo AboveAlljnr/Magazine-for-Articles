@@ -55,7 +55,7 @@ export function MobileSidebar({
         {/* Header */}
         <div
           className="p-6 flex items-center justify-between"
-          style={{ background: 'linear-gradient(135deg, #8b3a1a 0%, #b8652f 100%)' }}
+          style={{ background: '#28513e' }}
         >
           <div className="flex items-center gap-2.5">
             <img
@@ -65,7 +65,7 @@ export function MobileSidebar({
             />
             <span className="text-base tracking-widest text-white font-medium">UBUNTU ESSENCE</span>
           </div>
-          <button onClick={onClose} className="text-white/70 hover:text-white transition-colors">
+          <button aria-label="Close menu" onClick={onClose} className="text-white/70 hover:text-white transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>

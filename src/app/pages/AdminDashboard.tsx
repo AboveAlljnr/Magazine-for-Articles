@@ -176,7 +176,10 @@ function ArticlesTable({ articles, onRefresh, onEdit }: { articles: any[]; onRef
   async function handleTogglePublished(article: any) {
     setTogglingId(article.id);
     try {
-      await updateArticle(article.id, { published: !article.published, published_at: !article.published ? new Date().toISOString() : null });
+      await updateArticle(article.id, {
+        published: !article.published,
+        published_at: article.published_at || (!article.published ? new Date().toISOString() : null),
+      });
       onRefresh();
     } catch (e) { console.error(e); }
     finally { setTogglingId(null); }
@@ -228,7 +231,7 @@ function ArticlesTable({ articles, onRefresh, onEdit }: { articles: any[]; onRef
     try {
       await Promise.all(ids.map(id => updateArticle(id, {
         published: publish,
-        published_at: publish ? new Date().toISOString() : null,
+        published_at: articles.find(article => article.id === id)?.published_at || (publish ? new Date().toISOString() : null),
       })));
       onRefresh();
       setSelected(new Set());

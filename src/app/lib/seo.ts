@@ -63,7 +63,7 @@ export function applySeo({
   canonical,
   jsonLd,
 }: SeoData) {
-  const imageUrl = absolute(image);
+  const imageUrl = absolute(image || '/logo.jpg');
   document.title = title;
   upsertMeta('name', 'description', description);
   upsertMeta('property', 'og:title', title);
@@ -72,7 +72,9 @@ export function applySeo({
   upsertMeta('name', 'twitter:card', imageUrl ? 'summary_large_image' : 'summary');
   upsertMeta('name', 'twitter:title', title);
   upsertMeta('name', 'twitter:description', description);
-  if (url) upsertMeta('property', 'og:url', absolute(url)!);
+  upsertMeta('property', 'og:url', absolute(url || window.location.pathname)!);
+  upsertMeta('property', 'og:site_name', 'Ubuntu Essence');
+  upsertMeta('property', 'og:image:alt', title);
   if (imageUrl) {
     upsertMeta('property', 'og:image', imageUrl);
     upsertMeta('name', 'twitter:image', imageUrl);
@@ -82,6 +84,10 @@ export function applySeo({
 }
 
 export function resetSeo() {
+  upsertMeta('property', 'og:image', absolute('/logo.jpg')!);
+  upsertMeta('name', 'twitter:image', absolute('/logo.jpg')!);
+  upsertMeta('property', 'og:image:alt', 'Ubuntu Essence');
+  upsertMeta('property', 'og:url', window.location.origin + '/');
   document.title = DEFAULT_TITLE;
   upsertMeta('name', 'description', DEFAULT_DESCRIPTION);
   upsertMeta('property', 'og:title', DEFAULT_TITLE);

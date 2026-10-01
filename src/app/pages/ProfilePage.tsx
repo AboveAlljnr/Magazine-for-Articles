@@ -99,7 +99,7 @@ export function ProfilePage({
   ];
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="heritage-background min-h-screen bg-background">
       {/* Header */}
       <header className="border-b border-border bg-background sticky top-0 z-30">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 h-14 flex items-center gap-4">

@@ -5,8 +5,12 @@ import {
   Menu, Search, BookOpen, User, LogOut, ChevronDown,
   Bookmark, Sun, Moon, LayoutDashboard, BookMarked, Eye, Clock,
 } from 'lucide-react';
+import { toComponentArticle } from './lib/map-article';
+import { EditorialSections } from './components/EditorialSections';
+import { SeriesPage } from './pages/SeriesPage';
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from './components/ui/dialog';
 import { ArticleCard } from './components/ArticleCard';
-import { FeaturedArticle } from './components/FeaturedArticle';
+import { EditorialHero } from './components/EditorialHero';
 import { CategoryNav } from './components/CategoryNav';
 import { SearchOverlay } from './components/SearchOverlay';
 import { MobileSidebar } from './components/MobileSidebar';
@@ -46,33 +50,6 @@ const PT = {
 const PAGE_SIZE = 6;
 
 /* ── Helpers ────────────────────────────────────────────────────── */
-
-function formatDate(d: string | null) {
-  if (!d) return '';
-  return new Date(d).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-}
-
-export function toComponentArticle(row: any): MappedArticle {
-  return {
-    id: row.id,
-    title: row.title,
-    slug: row.slug,
-    excerpt: row.excerpt,
-    body: row.body || [],
-    image: row.image_url,
-    category: row.categories?.name || '',
-    subcategory: row.subcategories?.name || '',
-    author: row.authors?.name || '',
-    authorBio: row.authors?.bio || '',
-    authorAvatar: row.authors?.avatar_url || null,
-    date: formatDate(row.published_at),
-    readTime: `${row.read_time_minutes} min read`,
-    featured: row.featured,
-    views: row.views || 0,
-    likes: row.likes_count || 0,
-    comments: row.comments_count || 0,
-  };
-}
 
 /* ── Route wrapper: Article Detail ─────────────────────────────── */
 
@@ -316,15 +293,17 @@ function NewsletterSection() {
   }
 
   return (
-    <section className="mt-20 py-16 border-t border-border">
+    <section className="editorial-newsletter mt-20 py-12 sm:py-16">
       <div className="max-w-2xl mx-auto text-center">
-        <h3 className="text-2xl mb-4 text-foreground">Join Our Community</h3>
+        <h3 className="text-2xl mb-4 text-foreground">A little Ubuntu in your inbox</h3>
         <p className="text-muted-foreground mb-8">
-          Subscribe to Ubuntu Essence for weekly stories celebrating African culture, heritage, and the spirit of togetherness.
+          Stories of culture, belonging, and everyday life. Stay close to the journal with our newsletter.
         </p>
         <form onSubmit={handleSubscribe} className="flex flex-col sm:flex-row gap-3 sm:gap-4 max-w-md mx-auto">
           <input
             type="email"
+            aria-label="Email address"
+            autoComplete="email"
             required
             value={email}
             onChange={e => setEmail(e.target.value)}
@@ -417,6 +396,7 @@ interface AppProps {
 }
 
 export default function App({ user, onLogout, onGoToLogin, showSignInPrompt, onDismissSignInPrompt }: AppProps) {
+  const [bookmarkPrompt, setBookmarkPrompt] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const [profileTab, setProfileTab] = useState<'profile' | 'reading-list' | 'preferences'>('profile');
@@ -540,7 +520,7 @@ export default function App({ user, onLogout, onGoToLogin, showSignInPrompt, onD
   }
 
   async function handleToggleSave(article: MappedArticle) {
-    if (!user?.id) return;
+    if (!user?.id) { setBookmarkPrompt(true); return; }
     const already = savedIds.has(article.id);
     if (already) {
       await removeBookmark(user.id, article.id);
@@ -577,12 +557,15 @@ export default function App({ user, onLogout, onGoToLogin, showSignInPrompt, onD
 
   const dbSubcategories = activeCategory !== 'All' ? subcategoryMap[activeCategory] ?? [] : [];
   const featuredArticle = featuredRow ? toComponentArticle(featuredRow) : undefined;
-  const gridArticles = mappedArticles.filter(a => a.id !== featuredArticle?.id);
+  const leadArticle = featuredArticle || mappedArticles[0];
+  const gridArticles = activeCategory === 'All'
+    ? mappedArticles.filter(article => article.id !== leadArticle?.id)
+    : mappedArticles;
   const sectionTitle =
     activeSubcategory !== 'All'
       ? `${activeCategory} — ${activeSubcategory}`
       : activeCategory === 'All'
-      ? 'Latest Stories'
+      ? 'Latest stories'
       : `${activeCategory} Stories`;
 
   return (
@@ -611,12 +594,24 @@ export default function App({ user, onLogout, onGoToLogin, showSignInPrompt, onD
         />
       )}
 
+      <Dialog open={bookmarkPrompt} onOpenChange={setBookmarkPrompt}>
+        <DialogContent>
+          <DialogTitle>Keep a story for later</DialogTitle>
+          <DialogDescription>Sign in to save stories to your personal reading list.</DialogDescription>
+          <div className="flex flex-wrap gap-3 mt-2">
+            <button className="editorial-button" onClick={() => { setBookmarkPrompt(false); if (onGoToLogin) onGoToLogin(); else navigate('/login'); }}>Sign in to save stories</button>
+            <button className="px-4 py-3 text-sm hover:text-primary" onClick={() => setBookmarkPrompt(false)}>Keep reading</button>
+          </div>
+        </DialogContent>
+      </Dialog>
       <Routes>
+        <Route path="/series" element={<SeriesPage />} />
+        <Route path="/series/:seriesSlug" element={<SeriesPage />} />
         {/* ── Main magazine ── */}
         <Route
           path="/"
           element={
-            <motion.div key="main" {...PT} className="min-h-screen bg-background">
+            <motion.div key="main" {...PT} className="magazine-home heritage-background min-h-screen bg-background">
               {/* Sign-in nudge */}
               <AnimatePresence>
                 {showSignInPrompt && (
@@ -663,27 +658,27 @@ export default function App({ user, onLogout, onGoToLogin, showSignInPrompt, onD
               </AnimatePresence>
 
               {/* Header */}
-              <header className="border-b border-border sticky top-0 z-30 bg-background/95 backdrop-blur-sm">
+              <a href="#journal" className="skip-to-stories">Skip to stories</a>
+              <header className="magazine-header border-b border-border sticky top-0 z-30 bg-background/95 backdrop-blur-sm">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                  <div className="flex items-center justify-between h-16">
-                    <button className="p-2 hover:bg-muted rounded-lg transition-colors sm:hidden" onClick={() => setMenuOpen(true)}>
+                  <div className="masthead-row flex items-center justify-between gap-3">
+                    <button aria-label="Open menu" className="p-2 hover:bg-muted rounded-lg transition-colors sm:hidden" onClick={() => setMenuOpen(true)}>
                       <Menu className="w-6 h-6 text-foreground" />
                     </button>
 
                     <button
                       onClick={() => navigate('/')}
-                      className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0 hover:opacity-80 transition-opacity"
+                      className="masthead-brand flex items-center gap-2 hover:opacity-80 transition-opacity"
                     >
                       <img
                         src={logoUrl}
                         alt="Ubuntu Essence"
-                        className="w-8 h-8 sm:w-9 sm:h-9 object-contain mix-blend-multiply dark:invert dark:mix-blend-screen"
+                        className="hidden md:block w-9 h-9 object-contain mix-blend-multiply dark:invert dark:mix-blend-screen"
                       />
                       <span
-                        className="text-sm sm:text-lg xl:text-xl tracking-tight text-primary font-semibold"
-                        style={{ fontFamily: "'Inter', system-ui, sans-serif" }}
+                        className="magazine-wordmark"
                       >
-                        UBUNTU ESSENCE
+                        UBUNTU ESSENCE<span className="masthead-tagline">Stories of heritage & everyday life</span>
                       </span>
                     </button>
 
@@ -697,7 +692,7 @@ export default function App({ user, onLogout, onGoToLogin, showSignInPrompt, onD
                       </button>
 
                       <button
-                        className="p-2 hover:bg-muted rounded-lg transition-colors text-muted-foreground hover:text-primary"
+                        className="hidden sm:block p-2 hover:bg-muted rounded-lg transition-colors text-muted-foreground hover:text-primary"
                         onClick={() => navigate('/notes')}
                         aria-label="Notes"
                         title="Notes"
@@ -708,7 +703,7 @@ export default function App({ user, onLogout, onGoToLogin, showSignInPrompt, onD
                       </button>
 
                       <button
-                        className="p-2 hover:bg-muted rounded-lg transition-colors text-muted-foreground hover:text-primary"
+                        className="hidden sm:block p-2 hover:bg-muted rounded-lg transition-colors text-muted-foreground hover:text-primary"
                         onClick={() => navigate('/gallery')}
                         aria-label="Gallery"
                         title="Gallery"
@@ -718,7 +713,7 @@ export default function App({ user, onLogout, onGoToLogin, showSignInPrompt, onD
                         </svg>
                       </button>
 
-                      <button className="p-2 hover:bg-muted rounded-lg transition-colors" onClick={() => setSearchOpen(true)}>
+                      <button aria-label="Search stories" className="p-2 hover:bg-muted rounded-lg transition-colors" onClick={() => setSearchOpen(true)}>
                         <Search className="w-5 h-5 text-foreground" />
                       </button>
 
@@ -732,17 +727,18 @@ export default function App({ user, onLogout, onGoToLogin, showSignInPrompt, onD
                           savedCount={savedIds.size}
                         />
                       ) : (
-                        <button onClick={onGoToLogin} className="p-2 hover:bg-muted rounded-lg transition-colors">
+                        <button aria-label="Sign in" onClick={onGoToLogin} className="p-2 hover:bg-muted rounded-lg transition-colors">
                           <User className="w-5 h-5 text-foreground" />
                         </button>
                       )}
                     </div>
                   </div>
                 </div>
+                <div className="woven-trim" aria-hidden="true" />
               </header>
 
               {/* Category Nav */}
-              <div className="hidden sm:block">
+              <div>
                 <CategoryNav
                   categories={['All', ...dbCategories.map(c => c.name)]}
                   activeCategory={activeCategory}
@@ -754,7 +750,8 @@ export default function App({ user, onLogout, onGoToLogin, showSignInPrompt, onD
               </div>
 
               {/* Main content */}
-              <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+              <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+                {activeCategory === 'All' && <EditorialHero article={leadArticle} />}
                 {loading ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8" aria-label="Loading stories">
                     {Array.from({ length: 6 }).map((_, i) => (
@@ -775,18 +772,8 @@ export default function App({ user, onLogout, onGoToLogin, showSignInPrompt, onD
                   </div>
                 ) : (
                   <>
-                    {activeCategory === 'All' && featuredArticle && (
-                      <FeaturedArticle
-                        article={featuredArticle}
-                        onClick={handleArticleClick}
-                        saved={savedIds.has(featuredArticle.id)}
-                        onToggleSave={() => handleToggleSave(featuredArticle)}
-                        onAuthorClick={handleAuthorClick}
-                      />
-                    )}
-
-                    <section className={activeCategory === 'All' && featuredArticle ? 'mt-16' : ''}>
-                      <div className="flex items-center justify-between mb-8">
+                    <section id="journal" tabIndex={-1} className="journal-section scroll-mt-32">
+                      <div className="editorial-section-heading flex items-center justify-between gap-4 mb-8">
                         <h2 className="text-3xl tracking-tight">{sectionTitle}</h2>
                         {savedIds.size > 0 && (
                           <button
@@ -835,6 +822,8 @@ export default function App({ user, onLogout, onGoToLogin, showSignInPrompt, onD
                       )}
                     </section>
 
+                    {activeCategory === 'All' && <EditorialSections savedIds={savedIds} onToggleSave={handleToggleSave} onArticleClick={handleArticleClick} onAuthorClick={handleAuthorClick} onCategoryChange={handleCategoryChange} />}
+
                     {activeCategory === 'All' && mostRead.length > 0 && (
                       <MostReadSection
                         articles={mostRead.map(toComponentArticle)}
@@ -848,7 +837,8 @@ export default function App({ user, onLogout, onGoToLogin, showSignInPrompt, onD
               </main>
 
               {/* Footer */}
-              <footer className="border-t border-border mt-20 bg-muted/30">
+              <footer className="editorial-footer border-t border-border mt-10 bg-muted/30">
+                <div className="woven-trim" aria-hidden="true" />
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
                     <div>

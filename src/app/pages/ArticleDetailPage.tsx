@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { ArrowLeft, Clock, Bookmark, BookmarkCheck, Share2, Facebook, Link, List, Eye, Heart } from 'lucide-react';
 import { motion } from 'motion/react';
 import { CommentsSection } from '../components/CommentsSection';
+import { SeriesChapters } from '../components/SeriesChapters';
+import { ReadNext } from '../components/ReadNext';
 import { Avatar } from '../components/Avatar';
 import { applySeo, resetSeo } from '../lib/seo';
 import { optimizedImage } from '../../lib/image';
@@ -45,6 +47,14 @@ export function ArticleDetailPage({
   const [liked, setLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(article.likes);
 
+  const [textSize, setTextSize] = useState(() => {
+    try { const saved = localStorage.getItem('ue:reading-size'); return ['standard', 'large', 'extra'].includes(saved || '') ? saved! : 'standard'; }
+    catch { return 'standard'; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem('ue:reading-size', textSize); } catch { /* Optional preference storage. */ }
+  }, [textSize]);
+
   const progressKey = `ue:progress:${article.slug}`;
   const likeKey = `ue:liked:${article.id}`;
 
@@ -69,6 +79,7 @@ export function ArticleDetailPage({
 
   useEffect(() => {
     window.scrollTo(0, 0);
+    setProgress(0); setScrolled(false); setShareOpen(false); setResumePct(0);
     let saveTimer: ReturnType<typeof setTimeout> | undefined;
     const handleScroll = () => {
       setScrolled(window.scrollY > 80);
@@ -164,7 +175,7 @@ export function ArticleDetailPage({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -8 }}
       transition={{ duration: 0.25, ease: 'easeOut' }}
-      className="min-h-screen bg-background"
+      className="article-reader heritage-background min-h-screen bg-background"
     >
       {/* Reading progress bar */}
       <div className="fixed top-0 left-0 right-0 z-50 h-0.5 bg-muted pointer-events-none">
@@ -188,7 +199,7 @@ export function ArticleDetailPage({
             <ArrowLeft className="w-4 h-4" />Back
           </button>
           <p className="text-sm text-foreground line-clamp-1 flex-1 text-center">{article.title}</p>
-          <button onClick={onToggleSave} className="flex-shrink-0 text-muted-foreground hover:text-primary transition-colors">
+          <button aria-label={saved ? "Remove saved story" : "Save story"} onClick={onToggleSave} className="flex-shrink-0 text-muted-foreground hover:text-primary transition-colors">
             {saved ? <BookmarkCheck className="w-4 h-4 text-primary" /> : <Bookmark className="w-4 h-4" />}
           </button>
         </div>
@@ -213,20 +224,20 @@ export function ArticleDetailPage({
         </button>
 
         {/* Breadcrumb */}
-        <div className="flex items-center gap-2 text-xs mb-5">
+        <div className="flex flex-wrap items-center gap-2 text-xs mb-5">
           <span className="uppercase tracking-widest text-primary">{article.category}</span>
           <span className="text-border">·</span>
           <span className="uppercase tracking-widest text-muted-foreground">{article.subcategory}</span>
         </div>
 
-        <h1 className="text-4xl sm:text-5xl leading-tight text-foreground mb-6">{article.title}</h1>
+        <h1 className="text-3xl sm:text-5xl leading-tight break-words text-foreground mb-6">{article.title}</h1>
 
         <p className="text-xl text-muted-foreground leading-relaxed mb-8 border-l-4 border-primary pl-5">
           {article.excerpt}
         </p>
 
         {/* Author + meta */}
-        <div className="flex items-center justify-between py-5 border-y border-border mb-10">
+        <div className="flex flex-wrap gap-4 items-center justify-between py-5 border-y border-border mb-10">
           <div className="flex items-center gap-3">
             <Avatar
               name={article.author}
@@ -241,7 +252,7 @@ export function ArticleDetailPage({
               >
                 {article.author}
               </button>
-              <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+              <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground mt-0.5">
                 <span>{article.date}</span>
                 <span>·</span>
                 <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{article.readTime}</span>
@@ -258,14 +269,18 @@ export function ArticleDetailPage({
           <div className="flex items-center gap-2">
             <div className="relative">
               <button
-                onClick={() => setShareOpen(!shareOpen)}
+                aria-label="Share story" aria-expanded={shareOpen} onClick={() => setShareOpen(!shareOpen)}
                 className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
               >
                 <Share2 className="w-4 h-4" />
               </button>
               {shareOpen && (
                 <div className="absolute right-0 top-full mt-2 w-40 bg-card border border-border rounded-xl shadow-lg py-1 z-50"
-                  style={{ right: 'auto', left: '50%', transform: 'translateX(-50%)', minWidth: '10rem' }}>
+                  style={{ left: 0, right: 'auto', minWidth: '10rem' }}>
+                  <button
+                    onClick={() => openShare(`https://wa.me/?text=${encodeURIComponent(article.title + '\n' + window.location.origin + window.location.pathname)}`)}
+                    className="w-full min-h-11 flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-muted/50 transition-colors"
+                  >WhatsApp</button>
                   <button
                     onClick={() => openShare(`https://twitter.com/intent/tweet?text=${encodeURIComponent(article.title)}&url=${shareUrl()}`)}
                     className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-muted/50 transition-colors"
@@ -298,7 +313,7 @@ export function ArticleDetailPage({
               <span className="text-xs tabular-nums">{likeCount > 0 ? likeCount : ''}</span>
             </button>
             <button
-              onClick={onToggleSave}
+              aria-label={saved ? "Remove saved story" : "Save story"} onClick={onToggleSave}
               className={`p-2 rounded-lg hover:bg-muted transition-colors ${saved ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}`}
             >
               {saved ? <BookmarkCheck className="w-4 h-4" /> : <Bookmark className="w-4 h-4" />}
@@ -307,15 +322,15 @@ export function ArticleDetailPage({
         </div>
 
         {/* Hero image */}
-        <div className="aspect-[16/9] overflow-hidden rounded-xl border border-border mb-12">
+        {article.image?.trim() && <div className="aspect-[16/9] overflow-hidden rounded-xl border border-border mb-12">
           <img
             src={optimizedImage(article.image, 1600)}
             alt={article.title}
             loading="eager"
             decoding="async"
-            className="w-full h-full object-cover"
+            className="article-hero-photo w-full h-full object-cover"
           />
-        </div>
+        </div>}
 
         {/* Table of contents */}
         {toc.length >= 3 && (
@@ -343,9 +358,20 @@ export function ArticleDetailPage({
           </details>
         )}
 
+        <fieldset className="reading-controls border-y border-border py-4 mb-8">
+          <legend className="text-xs text-muted-foreground px-2">Reading comfort</legend>
+          <div className="flex flex-wrap items-center justify-between gap-3"><span className="text-sm">Text size</span><div className="flex gap-2" role="group" aria-label="Article text size">
+            {[['standard', 'Standard'], ['large', 'Large'], ['extra', 'Extra large']].map(([value, label]) => <button key={value} type="button" aria-pressed={textSize === value} onClick={() => setTextSize(value)} className={`px-3 py-2 border rounded-lg text-sm ${textSize === value ? 'border-primary bg-primary/10 text-primary' : 'border-border hover:border-primary'}`}>{label}</button>)}
+          </div></div>
+        </fieldset>
+
         {/* Body */}
-        <div className="space-y-7">
+        <div className="article-prose space-y-7" data-reading-size={textSize}>
           {article.body.map((paragraph, i) => {
+            const source = paragraph.match(/^Originally published on Substack: (https:\/\/mikaylascribes\.substack\.com\/p\/[a-z0-9-]+)$/);
+            if (source) {
+              return <p key={i} className="text-sm text-muted-foreground border-t border-border pt-6">Originally published on <a href={source[1]} target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-4">Mikayla’s Substack</a>.</p>;
+            }
             if (paragraph.startsWith('# ')) {
               return <h2 key={i} id={`para-${i}`} className="text-3xl font-bold text-foreground mt-10 mb-4">{paragraph.replace(/^#\s/, '')}</h2>;
             }
@@ -372,6 +398,9 @@ export function ArticleDetailPage({
             );
           })}
         </div>
+
+        <SeriesChapters articleSlug={article.slug} />
+        <ReadNext article={article} />
 
         {/* Decorative divider */}
         <div className="my-14 flex items-center gap-4">
@@ -406,30 +435,7 @@ export function ArticleDetailPage({
         {/* Comments */}
         <CommentsSection articleId={article.id} userName={userName} userId={userId} />
 
-        {/* Related articles */}
-        {relatedArticles.length > 0 && (
-          <section className="mt-16">
-            <h2 className="text-2xl text-foreground mb-8">More stories</h2>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {relatedArticles.map(related => (
-                <button key={related.id} onClick={() => onArticleClick(related)} className="group text-left">
-                  <div className="aspect-[4/3] overflow-hidden rounded-lg border border-border mb-3">
-                    <img
-                      src={optimizedImage(related.image, 600)}
-                      alt={related.title}
-                      loading="lazy"
-                      decoding="async"
-                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                    />
-                  </div>
-                  <p className="text-xs uppercase tracking-wide text-primary mb-1">{related.category}</p>
-                  <p className="text-sm font-medium text-foreground group-hover:text-primary transition-colors leading-snug">{related.title}</p>
-                  <p className="text-xs text-muted-foreground mt-1">{related.author}</p>
-                </button>
-              ))}
-            </div>
-          </section>
-        )}
+
       </div>
     </motion.div>
   );

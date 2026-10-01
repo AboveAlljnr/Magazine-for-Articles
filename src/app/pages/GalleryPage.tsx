@@ -32,7 +32,7 @@ export function GalleryPage({ onBack, onImageClick }: GalleryPageProps) {
     : [];
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="heritage-background min-h-screen bg-background">
       {/* Header */}
       <header className="sticky top-0 z-30 bg-background/95 backdrop-blur-sm border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center gap-4">

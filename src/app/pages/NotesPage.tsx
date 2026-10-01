@@ -36,7 +36,7 @@ export function NotesPage({ onBack }: NotesPageProps) {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -8 }}
       transition={{ duration: 0.25, ease: 'easeOut' }}
-      className="min-h-screen bg-background"
+      className="heritage-background min-h-screen bg-background"
     >
       <div className="max-w-3xl mx-auto px-4 sm:px-6 pt-8 pb-20">
         <button

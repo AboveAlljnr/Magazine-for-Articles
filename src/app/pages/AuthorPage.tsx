@@ -29,7 +29,7 @@ export function AuthorPage({
   const categories = [...new Set(authorArticles.map(a => a.category))];
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="heritage-background min-h-screen bg-background">
       <header className="border-b border-border sticky top-0 z-30 bg-background/95 backdrop-blur-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center gap-4">
           <button

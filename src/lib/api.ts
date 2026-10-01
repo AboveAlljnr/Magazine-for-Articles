@@ -105,6 +105,8 @@ export async function getAllSubcategories() {
 /* ── Articles ────────────────────────────────────────────────────── */
 
 export async function getArticles(opts?: {
+  categoryName?: string;
+  excludeId?: number;
   categorySlug?: string;
   subcategorySlug?: string;
   authorSlug?: string;
@@ -123,6 +125,8 @@ export async function getArticles(opts?: {
     .eq('published', true)
     .order('published_at', { ascending: false });
 
+  if (opts?.categoryName) query = query.eq('categories.name', opts.categoryName);
+  if (opts?.excludeId !== undefined) query = query.neq('id', opts.excludeId);
   if (opts?.categorySlug) {
     query = query.eq('categories.slug', opts.categorySlug);
   }
